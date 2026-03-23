@@ -1,20 +1,33 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { LocaleProvider } from './context/LocaleContext';
+import { TaskRewardsProvider } from './context/TaskRewardsContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import RootNavigator from './navigation/RootNavigator';
 
-export default function App() {
+function ThemedShell() {
+  const { isDark } = useTheme();
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <RootNavigator />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <LocaleProvider>
+          <ThemeProvider>
+            <TaskRewardsProvider>
+              <ThemedShell />
+            </TaskRewardsProvider>
+          </ThemeProvider>
+        </LocaleProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
