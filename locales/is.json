@@ -8,12 +8,12 @@
     "fallbackReward": "Verðlaun",
     "dearParent": "Kæri foreldri,",
     "taskSubject": "{{childName}} lauk verkefni!",
-    "taskBodyLine1": "{{childName}} lauk rétt núna verkefninu „{{taskTitle}}“ og fékk {{stars}} stjörnur.",
+    "taskBodyLine1": "{{childName}} lauk rétt í þessu verkefninu <strong>{{taskTitle}}</strong> og fékk {{stars}} stjörnur.",
     "taskBodyLine2": "{{childName}} á nú samtals {{totalStars}} stjörnur.",
     "rewardSubject": "{{childName}} valdi verðlaun!",
-    "rewardBodyLine1": "{{childName}} valdi rétt nú „{{rewardTitle}}“ og notaði {{starCost}} stjörnur.",
+    "rewardBodyLine1": "{{childName}} keypti rétt í þessu <strong>{{rewardTitle}}</strong> og notaði {{starCost}} stjörnur.",
     "rewardBodyLine2": "{{childName}} á nú samtals {{totalStars}} stjörnur.",
-    "emailSignoff": "— Verkefnaappið fyrir börn —"
+    "emailSignoff": "— TaskyKids —"
   },
   "defaultProgress": {
     "tasks": [

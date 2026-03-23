@@ -13,7 +13,7 @@
     "rewardSubject": "{{childName}} hat eine Belohnung gewählt!",
     "rewardBodyLine1": "{{childName}} hat soeben „{{rewardTitle}}“ gewählt und {{starCost}} Sterne ausgegeben.",
     "rewardBodyLine2": "{{childName}} hat jetzt insgesamt {{totalStars}} Sterne.",
-    "emailSignoff": "— Children Task Manager —"
+    "emailSignoff": "— TaskyKids —"
   },
   "defaultProgress": {
     "tasks": [

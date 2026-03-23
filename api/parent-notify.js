@@ -3,7 +3,7 @@
  *
  * Env (Vercel → Project → Settings → Environment Variables):
  *   RESEND_API_KEY       — from https://resend.com/api-keys
- *   RESEND_FROM          — verified sender, e.g. "Children App <notify@yourdomain.com>"
+ *   RESEND_FROM          — verified sender, e.g. "TaskyKids <notify@yourdomain.com>"
  *                          Test sender "… <onboarding@resend.dev>" ONLY delivers to the email on your Resend
  *                          account. To mail any parent address, verify a domain at resend.com/domains and use
  *                          a from-address on that domain (update RESEND_FROM, redeploy).
@@ -74,7 +74,7 @@ const EMAIL_FALLBACK_EN = {
   rewardBodyLine1:
     '{{childName}} just chose {{rewardTitle}} and spent {{starCost}} stars.',
   rewardBodyLine2: '{{childName}} now has a total of {{totalStars}} stars.',
-  emailSignoff: '— Children Task Manager —',
+  emailSignoff: '— TaskyKids —',
 };
 
 function emailDict(lang) {
