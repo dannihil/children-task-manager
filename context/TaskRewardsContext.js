@@ -32,11 +32,15 @@ function appSettingsFromParsed(parsed) {
     ? Boolean(p.onboardingComplete)
     : true;
   const email = typeof p.parentEmail === 'string' ? p.parentEmail.trim().slice(0, 320) : '';
+  const taskNotify = Boolean(p.emailNotifyTaskComplete);
+  /** Older saves had no key; treat “task emails on” as wanting activity emails for rewards too. */
+  const hasRewardKey = Object.prototype.hasOwnProperty.call(p, 'emailNotifyRewardRedeem');
+  const rewardNotify = hasRewardKey ? Boolean(p.emailNotifyRewardRedeem) : taskNotify;
   return {
     onboardingComplete,
     parentEmail: email,
-    emailNotifyTaskComplete: Boolean(p.emailNotifyTaskComplete),
-    emailNotifyRewardRedeem: Boolean(p.emailNotifyRewardRedeem),
+    emailNotifyTaskComplete: taskNotify,
+    emailNotifyRewardRedeem: rewardNotify,
   };
 }
 
@@ -647,6 +651,7 @@ export function TaskRewardsProvider({ children }) {
         childName: profile?.name ?? '',
         taskTitle: task.title,
         starsEarned: task.starsReward,
+        locale: language,
       });
     },
     [
@@ -655,6 +660,7 @@ export function TaskRewardsProvider({ children }) {
       state.profiles,
       state.parentEmail,
       state.emailNotifyTaskComplete,
+      language,
     ]
   );
 
@@ -663,7 +669,6 @@ export function TaskRewardsProvider({ children }) {
       const reward = activeProgress.rewards.find((x) => x.id === rewardId);
       if (!reward || activeProgress.stars < reward.starCost) return { ok: false };
       const profile = state.profiles.find((p) => p.id === state.activeProfileId);
-      dispatch({ type: 'REDEEM_REWARD', rewardId });
       void notifyParentEvent({
         kind: 'reward_redeem',
         to: state.parentEmail,
@@ -672,6 +677,7 @@ export function TaskRewardsProvider({ children }) {
         rewardTitle: reward.title,
         starCost: reward.starCost,
       });
+      dispatch({ type: 'REDEEM_REWARD', rewardId });
       return {
         ok: true,
         title: reward.title,
@@ -685,6 +691,7 @@ export function TaskRewardsProvider({ children }) {
       state.profiles,
       state.parentEmail,
       state.emailNotifyRewardRedeem,
+      language,
     ]
   );
 

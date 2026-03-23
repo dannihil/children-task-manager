@@ -2,6 +2,19 @@
   "common": {
     "loading": "Wird geladen…"
   },
+  "parentNotifyEmail": {
+    "defaultChild": "Ihr Kind",
+    "fallbackTask": "Eine Aufgabe",
+    "fallbackReward": "Eine Belohnung",
+    "taskSubject": "{{childName}} hat eine Aufgabe erledigt",
+    "rewardSubject": "{{childName}} hat eine Belohnung gewählt",
+    "taskText": "{{childName}} hat erledigt: „{{taskTitle}}“\n{{starsEarned}}: {{stars}}\n",
+    "rewardText": "{{childName}} hat gewählt: „{{rewardTitle}}“\n{{starsSpent}}: {{starCost}}\n",
+    "taskHtml": "<p><strong>{{childName}}</strong> hat <strong>{{taskTitle}}</strong> erledigt.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>",
+    "rewardHtml": "<p><strong>{{childName}}</strong> hat <strong>{{rewardTitle}}</strong> gewählt.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>",
+    "starsEarned": "Sterne verdient",
+    "starsSpent": "Sterne ausgegeben"
+  },
   "defaultProgress": {
     "tasks": [
       { "title": "Bett machen", "starsReward": 1 },
@@ -205,7 +218,7 @@
     "childNamePlaceholder": "Name des Kindes",
     "addChildButton": "Kind hinzufügen",
     "emailNotificationsTitle": "E-Mail-Benachrichtigungen",
-    "emailNotificationsSub": "Optional: Benachrichtigungen bei erledigten Aufgaben oder Belohnungen. Erfordert eine Server-URL in der App-Konfiguration.",
+    "emailNotificationsSub": "Optional: Benachrichtigungen bei erledigten Aufgaben oder Belohnungen. Benötigt eine Notify-URL. Mit Resends Test-Absender (onboarding@resend.dev) geht Post nur an die E-Mail deines Resend-Kontos, bis du eine Domain verifizierst und RESEND_FROM darauf setzt.",
     "emailNotificationsPlaceholder": "E-Mail der Eltern",
     "emailNotifyTask": "Aufgabe erledigt",
     "emailNotifyTaskSub": "E-Mail senden, wenn ein Kind eine Aufgabe abschließt",

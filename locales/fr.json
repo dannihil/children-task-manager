@@ -2,6 +2,19 @@
   "common": {
     "loading": "Chargement…"
   },
+  "parentNotifyEmail": {
+    "defaultChild": "Votre enfant",
+    "fallbackTask": "Une tâche",
+    "fallbackReward": "Une récompense",
+    "taskSubject": "{{childName}} a terminé une tâche",
+    "rewardSubject": "{{childName}} a choisi une récompense",
+    "taskText": "{{childName}} a terminé : « {{taskTitle}} »\n{{starsEarned}} : {{stars}}\n",
+    "rewardText": "{{childName}} a choisi : « {{rewardTitle}} »\n{{starsSpent}} : {{starCost}}\n",
+    "taskHtml": "<p><strong>{{childName}}</strong> a terminé <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}} : <strong>{{stars}}</strong></p>",
+    "rewardHtml": "<p><strong>{{childName}}</strong> a choisi <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}} : <strong>{{starCost}}</strong></p>",
+    "starsEarned": "Étoiles gagnées",
+    "starsSpent": "Étoiles dépensées"
+  },
   "defaultProgress": {
     "tasks": [
       { "title": "Faire son lit", "starsReward": 1 },
@@ -205,7 +218,7 @@
     "childNamePlaceholder": "Prénom de l’enfant",
     "addChildButton": "Ajouter un enfant",
     "emailNotificationsTitle": "Notifications par e-mail",
-    "emailNotificationsSub": "Facultatif : alertes pour tâches terminées ou récompenses. Nécessite une URL serveur dans la config.",
+    "emailNotificationsSub": "Facultatif : alertes pour tâches terminées ou récompenses. URL de notification requise. Avec l’expéditeur test Resend (onboarding@resend.dev), seul l’e-mail du compte Resend reçoit les messages tant qu’un domaine n’est pas vérifié et RESEND_FROM mis à jour.",
     "emailNotificationsPlaceholder": "E-mail du parent",
     "emailNotifyTask": "Tâche terminée",
     "emailNotifyTaskSub": "Envoyer un e-mail quand un enfant termine une tâche",

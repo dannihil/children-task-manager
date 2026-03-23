@@ -4,11 +4,27 @@
  * Env (Vercel → Project → Settings → Environment Variables):
  *   RESEND_API_KEY       — from https://resend.com/api-keys
  *   RESEND_FROM          — verified sender, e.g. "Children App <notify@yourdomain.com>"
- *                          (testing: "Children App <onboarding@resend.dev>" — only sends to your Resend account email)
+ *                          Test sender "… <onboarding@resend.dev>" ONLY delivers to the email on your Resend
+ *                          account. To mail any parent address, verify a domain at resend.com/domains and use
+ *                          a from-address on that domain (update RESEND_FROM, redeploy).
  *   PARENT_NOTIFY_SECRET — optional; if set, app must send Authorization: Bearer <same value>
+ *
+ * Email copy uses `locales/*.json` → `parentNotifyEmail` and the app’s `locale` field (en, is, de, …).
  */
 
 const RESEND_URL = 'https://api.resend.com/emails';
+
+const LOCALES = {
+  en: require('../locales/en.json'),
+  is: require('../locales/is.json'),
+  es: require('../locales/es.json'),
+  de: require('../locales/de.json'),
+  fr: require('../locales/fr.json'),
+  pt: require('../locales/pt.json'),
+  pl: require('../locales/pl.json'),
+};
+
+const SUPPORTED = new Set(['en', 'is', 'es', 'de', 'fr', 'pt', 'pl']);
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,29 +52,43 @@ function isValidEmail(s) {
   return t.length > 3 && t.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
-function buildEmail(body) {
-  const { kind, to, childName, taskTitle, starsEarned, rewardTitle, starCost } = body;
-  const who = typeof childName === 'string' && childName.trim() ? childName.trim() : 'Your child';
+function resolveLocale(code) {
+  if (typeof code !== 'string') return 'en';
+  const c = code.trim().toLowerCase();
+  if (SUPPORTED.has(c)) return c;
+  const two = c.slice(0, 2);
+  if (SUPPORTED.has(two)) return two;
+  return 'en';
+}
 
-  if (kind === 'task_complete') {
-    const title = typeof taskTitle === 'string' ? taskTitle.trim() : 'A task';
-    const stars = Number(starsEarned) || 0;
-    const subject = `${who} completed a task`;
-    const text = `${who} completed: "${title}"\nStars earned: ${stars}\n`;
-    const html = `<p><strong>${escapeHtml(who)}</strong> completed <strong>${escapeHtml(title)}</strong>.</p><p>Stars earned: <strong>${stars}</strong></p>`;
-    return { subject, text, html };
+function emailDict(lang) {
+  const code = resolveLocale(lang);
+  const raw = LOCALES[code]?.parentNotifyEmail;
+  const base = LOCALES.en?.parentNotifyEmail;
+  if (!base) {
+    return {
+      defaultChild: 'Your child',
+      taskSubject: '{{childName}} completed a task',
+      rewardSubject: '{{childName}} chose a reward',
+      taskText: '{{childName}} completed: "{{taskTitle}}"\n{{starsEarned}}: {{stars}}\n',
+      rewardText: '{{childName}} redeemed: "{{rewardTitle}}"\n{{starsSpent}}: {{starCost}}\n',
+      taskHtml:
+        '<p><strong>{{childName}}</strong> completed <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>',
+      rewardHtml:
+        '<p><strong>{{childName}}</strong> chose <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>',
+      starsEarned: 'Stars earned',
+      starsSpent: 'Stars spent',
+      fallbackTask: 'A task',
+      fallbackReward: 'A reward',
+    };
   }
+  if (!raw) return base;
+  return { ...base, ...raw };
+}
 
-  if (kind === 'reward_redeem') {
-    const title = typeof rewardTitle === 'string' ? rewardTitle.trim() : 'A reward';
-    const cost = Number(starCost) || 0;
-    const subject = `${who} chose a reward`;
-    const text = `${who} redeemed: "${title}"\nStars spent: ${cost}\n`;
-    const html = `<p><strong>${escapeHtml(who)}</strong> chose <strong>${escapeHtml(title)}</strong>.</p><p>Stars spent: <strong>${cost}</strong></p>`;
-    return { subject, text, html };
-  }
-
-  return null;
+function interpolate(str, map) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/\{\{(\w+)\}\}/g, (_, k) => (map[k] != null ? String(map[k]) : ''));
 }
 
 function escapeHtml(s) {
@@ -67,6 +97,55 @@ function escapeHtml(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function buildEmail(body) {
+  const { kind, childName, taskTitle, starsEarned, rewardTitle, starCost, locale } = body;
+  const dict = emailDict(locale);
+  const who =
+    typeof childName === 'string' && childName.trim() ? childName.trim() : dict.defaultChild;
+
+  if (kind === 'task_complete') {
+    const rawTitle = typeof taskTitle === 'string' ? taskTitle.trim() : '';
+    const titleText = rawTitle || dict.fallbackTask;
+    const stars = Number(starsEarned) || 0;
+    const subject = interpolate(dict.taskSubject, { childName: who });
+    const text = interpolate(dict.taskText, {
+      childName: who,
+      taskTitle: titleText,
+      starsEarned: dict.starsEarned,
+      stars,
+    });
+    const html = interpolate(dict.taskHtml, {
+      childName: escapeHtml(who),
+      taskTitle: escapeHtml(titleText),
+      starsEarned: escapeHtml(dict.starsEarned),
+      stars,
+    });
+    return { subject, text, html };
+  }
+
+  if (kind === 'reward_redeem') {
+    const rawTitle = typeof rewardTitle === 'string' ? rewardTitle.trim() : '';
+    const titleText = rawTitle || dict.fallbackReward;
+    const cost = Number(starCost) || 0;
+    const subject = interpolate(dict.rewardSubject, { childName: who });
+    const text = interpolate(dict.rewardText, {
+      childName: who,
+      rewardTitle: titleText,
+      starsSpent: dict.starsSpent,
+      starCost: cost,
+    });
+    const html = interpolate(dict.rewardHtml, {
+      childName: escapeHtml(who),
+      rewardTitle: escapeHtml(titleText),
+      starsSpent: escapeHtml(dict.starsSpent),
+      starCost: cost,
+    });
+    return { subject, text, html };
+  }
+
+  return null;
 }
 
 module.exports = async function handler(req, res) {

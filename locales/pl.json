@@ -2,6 +2,19 @@
   "common": {
     "loading": "Ładowanie…"
   },
+  "parentNotifyEmail": {
+    "defaultChild": "Twoje dziecko",
+    "fallbackTask": "Zadanie",
+    "fallbackReward": "Nagroda",
+    "taskSubject": "{{childName}} ukończyło zadanie",
+    "rewardSubject": "{{childName}} wybrało nagrodę",
+    "taskText": "{{childName}} ukończyło: „{{taskTitle}}”\n{{starsEarned}}: {{stars}}\n",
+    "rewardText": "{{childName}} wybrało: „{{rewardTitle}}”\n{{starsSpent}}: {{starCost}}\n",
+    "taskHtml": "<p><strong>{{childName}}</strong> ukończyło <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>",
+    "rewardHtml": "<p><strong>{{childName}}</strong> wybrało <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>",
+    "starsEarned": "Zdobyte gwiazdki",
+    "starsSpent": "Wydane gwiazdki"
+  },
   "defaultProgress": {
     "tasks": [
       { "title": "Pościelić łóżko", "starsReward": 1 },
@@ -205,7 +218,7 @@
     "childNamePlaceholder": "Imię dziecka",
     "addChildButton": "Dodaj dziecko",
     "emailNotificationsTitle": "Powiadomienia e-mail",
-    "emailNotificationsSub": "Opcjonalnie: alerty przy ukończonych zadaniach lub nagrodach. Wymaga URL serwera w konfiguracji aplikacji.",
+    "emailNotificationsSub": "Opcjonalnie: alerty przy ukończonych zadaniach lub nagrodach. Wymaga URL powiadomień. Przy testowym nadawcy Resend (onboarding@resend.dev) list trafia tylko na e-mail konta Resend, dopóki nie zweryfikujesz domeny i nie ustawisz RESEND_FROM.",
     "emailNotificationsPlaceholder": "E-mail rodzica",
     "emailNotifyTask": "Zadanie ukończone",
     "emailNotifyTaskSub": "Wyślij e-mail, gdy dziecko ukończy zadanie",

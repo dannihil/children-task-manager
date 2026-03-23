@@ -2,15 +2,28 @@
   "common": {
     "loading": "Hleð…"
   },
+  "parentNotifyEmail": {
+    "defaultChild": "Barnið þitt",
+    "fallbackTask": "Verkefni",
+    "fallbackReward": "Verðlaun",
+    "taskSubject": "{{childName}} lauk verkefni",
+    "rewardSubject": "{{childName}} valdi verðlaun",
+    "taskText": "{{childName}} lauk: „{{taskTitle}}“\n{{starsEarned}}: {{stars}}\n",
+    "rewardText": "{{childName}} valdi: „{{rewardTitle}}“\n{{starsSpent}}: {{starCost}}\n",
+    "taskHtml": "<p><strong>{{childName}}</strong> lauk <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>",
+    "rewardHtml": "<p><strong>{{childName}}</strong> valdi <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>",
+    "starsEarned": "Stjörnur fengnar",
+    "starsSpent": "Stjörnur notaðar"
+  },
   "defaultProgress": {
     "tasks": [
       { "title": "Búa um rúmið", "starsReward": 1 },
       { "title": "Leggðu leikföng á sinn stað", "starsReward": 2 },
-      { "title": "Tannburstun (kvöld)", "starsReward": 1 }
+      { "title": "Bursta tennurnar", "starsReward": 1 }
     ],
     "rewards": [
       { "title": "30 mínútur af skjátíma", "starCost": 5 },
-      { "title": "Veldu kvöldmynd", "starCost": 8 }
+      { "title": "Kósíkvöld", "starCost": 8 }
     ]
   },
   "intro": {
@@ -205,7 +218,7 @@
     "childNamePlaceholder": "Nafn barns",
     "addChildButton": "Bæta við barni",
     "emailNotificationsTitle": "Tilkynningar í tölvupósti",
-    "emailNotificationsSub": "Valfrjálsar tilkynningar þegar börn klára verkefni eða velja verðlaun. Krefst vefþjóns (aldrei geyma leynilykil API í appinu).",
+    "emailNotificationsSub": "Valfrjálsar tilkynningar þegar börn klára verkefni eða velja verðlaun. Krefst tilkynninga-URL í stillingum. Ef vefþjónninn notar Resend-prófunar netfang (onboarding@resend.dev) fer póstur aðeins á netfang Resend-aðgangsins þar til lén er staðfest í Resend og RESEND_FROM er uppfært.",
     "emailNotificationsPlaceholder": "Netfang foreldris",
     "emailNotifyTask": "Verkefni lokið",
     "emailNotifyTaskSub": "Senda tölvupóst þegar barn klárar verkefni",

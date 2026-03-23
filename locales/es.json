@@ -2,6 +2,19 @@
   "common": {
     "loading": "Cargando…"
   },
+  "parentNotifyEmail": {
+    "defaultChild": "Tu hijo o hija",
+    "fallbackTask": "Una tarea",
+    "fallbackReward": "Una recompensa",
+    "taskSubject": "{{childName}} completó una tarea",
+    "rewardSubject": "{{childName}} eligió una recompensa",
+    "taskText": "{{childName}} completó: «{{taskTitle}}»\n{{starsEarned}}: {{stars}}\n",
+    "rewardText": "{{childName}} eligió: «{{rewardTitle}}»\n{{starsSpent}}: {{starCost}}\n",
+    "taskHtml": "<p><strong>{{childName}}</strong> completó <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>",
+    "rewardHtml": "<p><strong>{{childName}}</strong> eligió <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>",
+    "starsEarned": "Estrellas ganadas",
+    "starsSpent": "Estrellas gastadas"
+  },
   "defaultProgress": {
     "tasks": [
       { "title": "Hacer la cama", "starsReward": 1 },
@@ -205,7 +218,7 @@
     "childNamePlaceholder": "Nombre del niño",
     "addChildButton": "Añadir niño",
     "emailNotificationsTitle": "Notificaciones por correo",
-    "emailNotificationsSub": "Opcional: avisos cuando los niños completan tareas o eligen recompensas. Requiere una URL de servidor en la configuración.",
+    "emailNotificationsSub": "Opcional: avisos cuando los niños completan tareas o eligen recompensas. Requiere URL de notificación. Con el remitente de prueba de Resend (onboarding@resend.dev) solo llega al correo de tu cuenta Resend hasta que verifiques un dominio y configures RESEND_FROM.",
     "emailNotificationsPlaceholder": "Correo del padre o madre",
     "emailNotifyTask": "Tarea completada",
     "emailNotifyTaskSub": "Enviar correo cuando un niño termina una tarea",

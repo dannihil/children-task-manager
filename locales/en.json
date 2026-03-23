@@ -2,6 +2,19 @@
   "common": {
     "loading": "Loading…"
   },
+  "parentNotifyEmail": {
+    "defaultChild": "Your child",
+    "fallbackTask": "A task",
+    "fallbackReward": "A reward",
+    "taskSubject": "{{childName}} completed a task",
+    "rewardSubject": "{{childName}} chose a reward",
+    "taskText": "{{childName}} completed: \"{{taskTitle}}\"\n{{starsEarned}}: {{stars}}\n",
+    "rewardText": "{{childName}} redeemed: \"{{rewardTitle}}\"\n{{starsSpent}}: {{starCost}}\n",
+    "taskHtml": "<p><strong>{{childName}}</strong> completed <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>",
+    "rewardHtml": "<p><strong>{{childName}}</strong> chose <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>",
+    "starsEarned": "Stars earned",
+    "starsSpent": "Stars spent"
+  },
   "defaultProgress": {
     "tasks": [
       { "title": "Make the bed", "starsReward": 1 },
@@ -205,7 +218,7 @@
     "childNamePlaceholder": "Child’s name",
     "addChildButton": "Add child",
     "emailNotificationsTitle": "Email notifications",
-    "emailNotificationsSub": "Optional updates when children complete tasks or pick rewards. Requires a server URL in app config (never put email API secrets in the app).",
+    "emailNotificationsSub": "Optional updates when children complete tasks or pick rewards. Requires a notify URL in app config. If your server uses Resend’s test address (onboarding@resend.dev), mail only reaches the email on your Resend account until you verify a domain and set RESEND_FROM to an address on that domain.",
     "emailNotificationsPlaceholder": "Parent email address",
     "emailNotifyTask": "Task completed",
     "emailNotifyTaskSub": "Send an email when a child finishes a task",

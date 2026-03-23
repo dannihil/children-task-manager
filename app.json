@@ -2,7 +2,7 @@
   "expo": {
     "name": "Children Task Manager",
     "slug": "children-task-manager",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -14,19 +14,22 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.childrentaskmanager.app",
-      "buildNumber": "2",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.RECORD_AUDIO"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,7 +48,7 @@
       "eas": {
         "projectId": "79c0b60d-cab9-4c7f-b95e-f05e2c68bd86"
       },
-      "parentNotifyUrl": "children-task-manager.vercel.app",
+      "parentNotifyUrl": "https://children-task-manager.vercel.app/api/parent-notify",
       "parentNotifySecret": ""
     }
   }
