@@ -26,9 +26,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -47,7 +45,7 @@
       "eas": {
         "projectId": "79c0b60d-cab9-4c7f-b95e-f05e2c68bd86"
       },
-      "parentNotifyUrl": "",
+      "parentNotifyUrl": "children-task-manager.vercel.app",
       "parentNotifySecret": ""
     }
   }
