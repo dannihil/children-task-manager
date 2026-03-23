@@ -6,14 +6,14 @@
     "defaultChild": "Ihr Kind",
     "fallbackTask": "Eine Aufgabe",
     "fallbackReward": "Eine Belohnung",
-    "taskSubject": "{{childName}} hat eine Aufgabe erledigt",
-    "rewardSubject": "{{childName}} hat eine Belohnung gewählt",
-    "taskText": "{{childName}} hat erledigt: „{{taskTitle}}“\n{{starsEarned}}: {{stars}}\n",
-    "rewardText": "{{childName}} hat gewählt: „{{rewardTitle}}“\n{{starsSpent}}: {{starCost}}\n",
-    "taskHtml": "<p><strong>{{childName}}</strong> hat <strong>{{taskTitle}}</strong> erledigt.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>",
-    "rewardHtml": "<p><strong>{{childName}}</strong> hat <strong>{{rewardTitle}}</strong> gewählt.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>",
-    "starsEarned": "Sterne verdient",
-    "starsSpent": "Sterne ausgegeben"
+    "dearParent": "Liebe Eltern,",
+    "taskSubject": "{{childName}} hat eine Aufgabe erledigt!",
+    "taskBodyLine1": "{{childName}} hat soeben die Aufgabe „{{taskTitle}}“ erledigt und {{stars}} Sterne erhalten.",
+    "taskBodyLine2": "{{childName}} hat jetzt insgesamt {{totalStars}} Sterne.",
+    "rewardSubject": "{{childName}} hat eine Belohnung gewählt!",
+    "rewardBodyLine1": "{{childName}} hat soeben „{{rewardTitle}}“ gewählt und {{starCost}} Sterne ausgegeben.",
+    "rewardBodyLine2": "{{childName}} hat jetzt insgesamt {{totalStars}} Sterne.",
+    "emailSignoff": "— Children Task Manager —"
   },
   "defaultProgress": {
     "tasks": [

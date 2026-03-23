@@ -6,14 +6,14 @@
     "defaultChild": "Barnið þitt",
     "fallbackTask": "Verkefni",
     "fallbackReward": "Verðlaun",
-    "taskSubject": "{{childName}} lauk verkefni",
-    "rewardSubject": "{{childName}} valdi verðlaun",
-    "taskText": "{{childName}} lauk: „{{taskTitle}}“\n{{starsEarned}}: {{stars}}\n",
-    "rewardText": "{{childName}} valdi: „{{rewardTitle}}“\n{{starsSpent}}: {{starCost}}\n",
-    "taskHtml": "<p><strong>{{childName}}</strong> lauk <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>",
-    "rewardHtml": "<p><strong>{{childName}}</strong> valdi <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>",
-    "starsEarned": "Stjörnur fengnar",
-    "starsSpent": "Stjörnur notaðar"
+    "dearParent": "Kæri foreldri,",
+    "taskSubject": "{{childName}} lauk verkefni!",
+    "taskBodyLine1": "{{childName}} lauk rétt núna verkefninu „{{taskTitle}}“ og fékk {{stars}} stjörnur.",
+    "taskBodyLine2": "{{childName}} á nú samtals {{totalStars}} stjörnur.",
+    "rewardSubject": "{{childName}} valdi verðlaun!",
+    "rewardBodyLine1": "{{childName}} valdi rétt nú „{{rewardTitle}}“ og notaði {{starCost}} stjörnur.",
+    "rewardBodyLine2": "{{childName}} á nú samtals {{totalStars}} stjörnur.",
+    "emailSignoff": "— Verkefnaappið fyrir börn —"
   },
   "defaultProgress": {
     "tasks": [

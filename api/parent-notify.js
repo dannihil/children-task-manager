@@ -61,29 +61,29 @@ function resolveLocale(code) {
   return 'en';
 }
 
+const EMAIL_FALLBACK_EN = {
+  defaultChild: 'Your child',
+  fallbackTask: 'A task',
+  fallbackReward: 'A reward',
+  dearParent: 'Dear parent,',
+  taskSubject: '{{childName}} completed a task!',
+  taskBodyLine1:
+    '{{childName}} just completed the task {{taskTitle}} and received {{stars}} stars.',
+  taskBodyLine2: '{{childName}} now has a total of {{totalStars}} stars.',
+  rewardSubject: '{{childName}} chose a reward!',
+  rewardBodyLine1:
+    '{{childName}} just chose {{rewardTitle}} and spent {{starCost}} stars.',
+  rewardBodyLine2: '{{childName}} now has a total of {{totalStars}} stars.',
+  emailSignoff: '— Children Task Manager —',
+};
+
 function emailDict(lang) {
   const code = resolveLocale(lang);
   const raw = LOCALES[code]?.parentNotifyEmail;
   const base = LOCALES.en?.parentNotifyEmail;
-  if (!base) {
-    return {
-      defaultChild: 'Your child',
-      taskSubject: '{{childName}} completed a task',
-      rewardSubject: '{{childName}} chose a reward',
-      taskText: '{{childName}} completed: "{{taskTitle}}"\n{{starsEarned}}: {{stars}}\n',
-      rewardText: '{{childName}} redeemed: "{{rewardTitle}}"\n{{starsSpent}}: {{starCost}}\n',
-      taskHtml:
-        '<p><strong>{{childName}}</strong> completed <strong>{{taskTitle}}</strong>.</p><p>{{starsEarned}}: <strong>{{stars}}</strong></p>',
-      rewardHtml:
-        '<p><strong>{{childName}}</strong> chose <strong>{{rewardTitle}}</strong>.</p><p>{{starsSpent}}: <strong>{{starCost}}</strong></p>',
-      starsEarned: 'Stars earned',
-      starsSpent: 'Stars spent',
-      fallbackTask: 'A task',
-      fallbackReward: 'A reward',
-    };
-  }
-  if (!raw) return base;
-  return { ...base, ...raw };
+  if (!base) return { ...EMAIL_FALLBACK_EN };
+  if (!raw) return { ...EMAIL_FALLBACK_EN, ...base };
+  return { ...EMAIL_FALLBACK_EN, ...base, ...raw };
 }
 
 function interpolate(str, map) {
@@ -99,49 +99,49 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+function normalizeStarCount(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || x < 0) return 0;
+  return Math.floor(x);
+}
+
 function buildEmail(body) {
-  const { kind, childName, taskTitle, starsEarned, rewardTitle, starCost, locale } = body;
+  const { kind, childName, taskTitle, starsEarned, rewardTitle, starCost, totalStars, locale } =
+    body;
   const dict = emailDict(locale);
   const who =
     typeof childName === 'string' && childName.trim() ? childName.trim() : dict.defaultChild;
+  const total = normalizeStarCount(totalStars);
 
   if (kind === 'task_complete') {
     const rawTitle = typeof taskTitle === 'string' ? taskTitle.trim() : '';
     const titleText = rawTitle || dict.fallbackTask;
-    const stars = Number(starsEarned) || 0;
+    const stars = normalizeStarCount(starsEarned);
     const subject = interpolate(dict.taskSubject, { childName: who });
-    const text = interpolate(dict.taskText, {
+    const line1 = interpolate(dict.taskBodyLine1, {
       childName: who,
       taskTitle: titleText,
-      starsEarned: dict.starsEarned,
       stars,
     });
-    const html = interpolate(dict.taskHtml, {
-      childName: escapeHtml(who),
-      taskTitle: escapeHtml(titleText),
-      starsEarned: escapeHtml(dict.starsEarned),
-      stars,
-    });
+    const line2 = interpolate(dict.taskBodyLine2, { childName: who, totalStars: total });
+    const text = `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`;
+    const html = `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>`;
     return { subject, text, html };
   }
 
   if (kind === 'reward_redeem') {
     const rawTitle = typeof rewardTitle === 'string' ? rewardTitle.trim() : '';
     const titleText = rawTitle || dict.fallbackReward;
-    const cost = Number(starCost) || 0;
+    const cost = normalizeStarCount(starCost);
     const subject = interpolate(dict.rewardSubject, { childName: who });
-    const text = interpolate(dict.rewardText, {
+    const line1 = interpolate(dict.rewardBodyLine1, {
       childName: who,
       rewardTitle: titleText,
-      starsSpent: dict.starsSpent,
       starCost: cost,
     });
-    const html = interpolate(dict.rewardHtml, {
-      childName: escapeHtml(who),
-      rewardTitle: escapeHtml(titleText),
-      starsSpent: escapeHtml(dict.starsSpent),
-      starCost: cost,
-    });
+    const line2 = interpolate(dict.rewardBodyLine2, { childName: who, totalStars: total });
+    const text = `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`;
+    const html = `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>`;
     return { subject, text, html };
   }
 

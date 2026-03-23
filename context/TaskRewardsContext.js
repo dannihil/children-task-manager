@@ -643,6 +643,7 @@ export function TaskRewardsProvider({ children }) {
       const tk = todayKey();
       if (!task || task.lastCompletedDate === tk) return;
       const profile = state.profiles.find((p) => p.id === id);
+      const totalAfter = (prog?.stars ?? 0) + (task.starsReward ?? 0);
       dispatch({ type: 'COMPLETE_TASK', taskId });
       void notifyParentEvent({
         kind: 'task_complete',
@@ -651,6 +652,7 @@ export function TaskRewardsProvider({ children }) {
         childName: profile?.name ?? '',
         taskTitle: task.title,
         starsEarned: task.starsReward,
+        totalStars: totalAfter,
         locale: language,
       });
     },
@@ -669,6 +671,7 @@ export function TaskRewardsProvider({ children }) {
       const reward = activeProgress.rewards.find((x) => x.id === rewardId);
       if (!reward || activeProgress.stars < reward.starCost) return { ok: false };
       const profile = state.profiles.find((p) => p.id === state.activeProfileId);
+      const totalAfter = activeProgress.stars - reward.starCost;
       void notifyParentEvent({
         kind: 'reward_redeem',
         to: state.parentEmail,
@@ -676,6 +679,8 @@ export function TaskRewardsProvider({ children }) {
         childName: profile?.name ?? '',
         rewardTitle: reward.title,
         starCost: reward.starCost,
+        totalStars: totalAfter,
+        locale: language,
       });
       dispatch({ type: 'REDEEM_REWARD', rewardId });
       return {
