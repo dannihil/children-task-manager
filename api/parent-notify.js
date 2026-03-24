@@ -3,16 +3,20 @@
  *
  * Env (Vercel → Project → Settings → Environment Variables):
  *   RESEND_API_KEY       — from https://resend.com/api-keys
- *   RESEND_FROM          — verified sender, e.g. "TaskyKids <notify@yourdomain.com>"
- *                          Test sender "… <onboarding@resend.dev>" ONLY delivers to the email on your Resend
- *                          account. To mail any parent address, verify a domain at resend.com/domains and use
- *                          a from-address on that domain (update RESEND_FROM, redeploy).
+ *   RESEND_FROM          — sender address Resend accepts, e.g. "anything <notify@yourdomain.com>" or bare email.
+ *                          The visible name is always rebuilt as RESEND_FROM_NAME or "TaskyKids" (so old values
+ *                          like "Children Task Manager" in Vercel are replaced on send).
+ *   RESEND_FROM_NAME     — optional override for that display name (default: TaskyKids).
  *   PARENT_NOTIFY_SECRET — optional; if set, app must send Authorization: Bearer <same value>
  *
  * Email copy uses `locales/*.json` → `parentNotifyEmail` and the app’s `locale` field (en, is, de, …).
+ *
+ * Signature image: `public/taskykids-email-signature.png` is served from your Vercel deployment root.
+ * Optional `EMAIL_SIGNATURE_IMAGE_URL` — full HTTPS URL if the file is hosted elsewhere (overrides VERCEL_URL).
  */
 
 const RESEND_URL = 'https://api.resend.com/emails';
+const SIGNATURE_STATIC_PATH = 'taskykids-email-signature.png';
 
 const LOCALES = {
   en: require('../locales/en.json'),
@@ -50,6 +54,26 @@ function isValidEmail(s) {
   if (typeof s !== 'string') return false;
   const t = s.trim();
   return t.length > 3 && t.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+}
+
+const DEFAULT_RESEND_DISPLAY_NAME = 'TaskyKids';
+
+/** Resend `from`: use configured email but force display name (fixes stale "Children Task Manager" in env). */
+function resendFromHeader() {
+  const raw = typeof process.env.RESEND_FROM === 'string' ? process.env.RESEND_FROM.trim() : '';
+  if (!raw) return null;
+  const nameRaw = process.env.RESEND_FROM_NAME;
+  const displayName =
+    typeof nameRaw === 'string' && nameRaw.trim().length > 0
+      ? nameRaw.trim()
+      : DEFAULT_RESEND_DISPLAY_NAME;
+  const bracket = raw.match(/<([^>]+)>/);
+  if (bracket) {
+    const email = bracket[1].trim();
+    if (isValidEmail(email)) return `${displayName} <${email}>`;
+  }
+  if (isValidEmail(raw)) return `${displayName} <${raw}>`;
+  return raw;
 }
 
 function resolveLocale(code) {
@@ -105,6 +129,31 @@ function normalizeStarCount(n) {
   return Math.floor(x);
 }
 
+function signatureImageUrl() {
+  const explicit = process.env.EMAIL_SIGNATURE_IMAGE_URL;
+  if (typeof explicit === 'string' && explicit.trim().length > 0) return explicit.trim();
+  const vercel = process.env.VERCEL_URL;
+  if (typeof vercel === 'string' && vercel.trim().length > 0) {
+    const host = vercel.replace(/^https?:\/\//, '').split('/')[0];
+    return `https://${host}/${SIGNATURE_STATIC_PATH}`;
+  }
+  return '';
+}
+
+/** HTML block under the text signoff; image is loaded from public URL (see EMAIL_SIGNATURE_IMAGE_URL / VERCEL_URL). */
+function emailSignatureHtmlBlock() {
+  const url = signatureImageUrl();
+  if (!url) return '';
+  const safe = url.replace(/"/g, '');
+  return `<p style="margin:20px 0 0 0;line-height:0;"><img src="${safe}" width="280" alt="TaskyKids" border="0" style="display:block;max-width:280px;height:auto;border:0;outline:none;text-decoration:none;" /></p>`;
+}
+
+function appendSignatureText(text) {
+  const url = signatureImageUrl();
+  if (!url) return text;
+  return `${text}\n\n${url}`;
+}
+
 function buildEmail(body) {
   const { kind, childName, taskTitle, starsEarned, rewardTitle, starCost, totalStars, locale } =
     body;
@@ -124,8 +173,12 @@ function buildEmail(body) {
       stars,
     });
     const line2 = interpolate(dict.taskBodyLine2, { childName: who, totalStars: total });
-    const text = `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`;
-    const html = `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>`;
+    const text = appendSignatureText(
+      `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`
+    );
+    const html =
+      `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>` +
+      emailSignatureHtmlBlock();
     return { subject, text, html };
   }
 
@@ -140,8 +193,12 @@ function buildEmail(body) {
       starCost: cost,
     });
     const line2 = interpolate(dict.rewardBodyLine2, { childName: who, totalStars: total });
-    const text = `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`;
-    const html = `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>`;
+    const text = appendSignatureText(
+      `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`
+    );
+    const html =
+      `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>` +
+      emailSignatureHtmlBlock();
     return { subject, text, html };
   }
 
@@ -184,7 +241,7 @@ module.exports = async function handler(req, res) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
+  const from = resendFromHeader();
   if (!apiKey || !from) {
     return res.status(503).json({ error: 'Server email not configured (RESEND_API_KEY / RESEND_FROM)' });
   }
