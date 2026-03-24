@@ -11,11 +11,16 @@
  *
  * Email copy uses `locales/*.json` → `parentNotifyEmail` and the app’s `locale` field (en, is, de, …).
  *
- * Signature image: `public/taskykids-email-signature.png` is served from your Vercel deployment root.
- * Optional `EMAIL_SIGNATURE_IMAGE_URL` — full HTTPS URL if the file is hosted elsewhere (overrides VERCEL_URL).
+ * Signature image: embedded inline via Resend CID from `api/taskykids-email-signature.png` (no public URL needed).
+ * Fallback: optional `EMAIL_SIGNATURE_IMAGE_URL` for remote <img> if the file cannot be read on disk.
  */
 
+const fs = require('fs');
+const path = require('path');
+
 const RESEND_URL = 'https://api.resend.com/emails';
+const SIGNATURE_FILENAME = 'taskykids-email-signature.png';
+const SIGNATURE_CID = 'taskykids-signature';
 const SIGNATURE_STATIC_PATH = 'taskykids-email-signature.png';
 
 const LOCALES = {
@@ -140,8 +145,43 @@ function signatureImageUrl() {
   return '';
 }
 
-/** HTML block under the text signoff; image is loaded from public URL (see EMAIL_SIGNATURE_IMAGE_URL / VERCEL_URL). */
+/** @type {{ filename: string, content: string, content_id: string } | null | undefined} */
+let signatureAttachmentCache;
+
+/** Inline PNG for Resend (CID). Tries `api/` first so Vercel bundles the file with the function. */
+function getSignatureAttachment() {
+  if (signatureAttachmentCache !== undefined) return signatureAttachmentCache;
+  const candidates = [
+    path.join(__dirname, SIGNATURE_FILENAME),
+    path.join(__dirname, '..', 'public', SIGNATURE_FILENAME),
+    path.join(process.cwd(), 'public', SIGNATURE_FILENAME),
+    path.join(process.cwd(), 'api', SIGNATURE_FILENAME),
+  ];
+  for (const p of candidates) {
+    try {
+      const buf = fs.readFileSync(p);
+      if (buf && buf.length > 0) {
+        signatureAttachmentCache = {
+          filename: SIGNATURE_FILENAME,
+          content: buf.toString('base64'),
+          content_id: SIGNATURE_CID,
+          content_type: 'image/png',
+        };
+        return signatureAttachmentCache;
+      }
+    } catch {
+      /* try next path */
+    }
+  }
+  signatureAttachmentCache = null;
+  return null;
+}
+
+/** HTML under signoff: prefer CID inline image; else optional remote URL. */
 function emailSignatureHtmlBlock() {
+  if (getSignatureAttachment()) {
+    return `<p style="margin:20px 0 0 0;line-height:0;"><img src="cid:${SIGNATURE_CID}" width="280" alt="TaskyKids" border="0" style="display:block;max-width:280px;height:auto;border:0;outline:none;text-decoration:none;" /></p>`;
+  }
   const url = signatureImageUrl();
   if (!url) return '';
   const safe = url.replace(/"/g, '');
@@ -149,6 +189,7 @@ function emailSignatureHtmlBlock() {
 }
 
 function appendSignatureText(text) {
+  if (getSignatureAttachment()) return text;
   const url = signatureImageUrl();
   if (!url) return text;
   return `${text}\n\n${url}`;
@@ -246,19 +287,32 @@ module.exports = async function handler(req, res) {
     return res.status(503).json({ error: 'Server email not configured (RESEND_API_KEY / RESEND_FROM)' });
   }
 
+  const sig = getSignatureAttachment();
+  const payload = {
+    from,
+    to: [to.trim()],
+    subject: content.subject,
+    text: content.text,
+    html: content.html,
+  };
+  if (sig) {
+    payload.attachments = [
+      {
+        filename: sig.filename,
+        content: sig.content,
+        content_id: sig.content_id,
+        content_type: sig.content_type,
+      },
+    ];
+  }
+
   const resendRes = await fetch(RESEND_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from,
-      to: [to.trim()],
-      subject: content.subject,
-      text: content.text,
-      html: content.html,
-    }),
+    body: JSON.stringify(payload),
   });
 
   const data = await resendRes.json().catch(() => ({}));
