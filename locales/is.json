@@ -12,8 +12,7 @@
     "taskBodyLine2": "{{childName}} á nú samtals {{totalStars}} stjörnur.",
     "rewardSubject": "{{childName}} valdi verðlaun!",
     "rewardBodyLine1": "{{childName}} keypti rétt í þessu {{rewardTitle}} og notaði {{starCost}} stjörnur.",
-    "rewardBodyLine2": "{{childName}} á nú samtals {{totalStars}} stjörnur.",
-    "emailSignoff": "— TaskyKids —"
+    "rewardBodyLine2": "{{childName}} á nú samtals {{totalStars}} stjörnur."
   },
   "defaultProgress": {
     "tasks": [

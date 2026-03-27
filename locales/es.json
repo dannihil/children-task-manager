@@ -12,8 +12,7 @@
     "taskBodyLine2": "{{childName}} tiene ahora un total de {{totalStars}} estrellas.",
     "rewardSubject": "¡{{childName}} eligió una recompensa!",
     "rewardBodyLine1": "{{childName}} acaba de elegir «{{rewardTitle}}» y ha gastado {{starCost}} estrellas.",
-    "rewardBodyLine2": "{{childName}} tiene ahora un total de {{totalStars}} estrellas.",
-    "emailSignoff": "— TaskyKids —"
+    "rewardBodyLine2": "{{childName}} tiene ahora un total de {{totalStars}} estrellas."
   },
   "defaultProgress": {
     "tasks": [

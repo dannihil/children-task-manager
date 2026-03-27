@@ -103,7 +103,6 @@ const EMAIL_FALLBACK_EN = {
   rewardBodyLine1:
     '{{childName}} just chose {{rewardTitle}} and spent {{starCost}} stars.',
   rewardBodyLine2: '{{childName}} now has a total of {{totalStars}} stars.',
-  emailSignoff: '— TaskyKids —',
 };
 
 function emailDict(lang) {
@@ -219,11 +218,18 @@ function buildEmail(body) {
       stars,
     });
     const line2 = interpolate(dict.taskBodyLine2, { childName: who, totalStars: total });
-    const text = appendSignatureText(
-      `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`
-    );
+    const text = appendSignatureText(`${dict.dearParent}\n\n${line1}\n${line2}`);
+    const line1Html = interpolate(dict.taskBodyLine1, {
+      childName: escapeHtml(who),
+      taskTitle: `<strong>${escapeHtml(titleText)}</strong>`,
+      stars,
+    });
+    const line2Html = interpolate(dict.taskBodyLine2, {
+      childName: escapeHtml(who),
+      totalStars: total,
+    });
     const html =
-      `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>` +
+      `<p>${escapeHtml(dict.dearParent)}</p><p>${line1Html}</p><p>${line2Html}</p>` +
       emailSignatureHtmlBlock();
     return { subject, text, html };
   }
@@ -239,11 +245,18 @@ function buildEmail(body) {
       starCost: cost,
     });
     const line2 = interpolate(dict.rewardBodyLine2, { childName: who, totalStars: total });
-    const text = appendSignatureText(
-      `${dict.dearParent}\n\n${line1}\n${line2}\n\n${dict.emailSignoff}`
-    );
+    const text = appendSignatureText(`${dict.dearParent}\n\n${line1}\n${line2}`);
+    const line1Html = interpolate(dict.rewardBodyLine1, {
+      childName: escapeHtml(who),
+      rewardTitle: `<strong>${escapeHtml(titleText)}</strong>`,
+      starCost: cost,
+    });
+    const line2Html = interpolate(dict.rewardBodyLine2, {
+      childName: escapeHtml(who),
+      totalStars: total,
+    });
     const html =
-      `<p>${escapeHtml(dict.dearParent)}</p><p>${escapeHtml(line1)}</p><p>${escapeHtml(line2)}</p><p>${escapeHtml(dict.emailSignoff)}</p>` +
+      `<p>${escapeHtml(dict.dearParent)}</p><p>${line1Html}</p><p>${line2Html}</p>` +
       emailSignatureHtmlBlock();
     return { subject, text, html };
   }
