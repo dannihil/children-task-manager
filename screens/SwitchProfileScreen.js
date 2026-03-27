@@ -4,7 +4,9 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  InteractionManager,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -53,6 +55,18 @@ export default function SwitchProfileScreen({ navigation }) {
 
   const closeAvatarModal = () => setAvatarModalProfileId(null);
 
+  const runAfterAvatarModalDismiss = (fn) => {
+    closeAvatarModal();
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(fn, 280);
+    });
+  };
+
+  const imagePickerEditOptions =
+    Platform.OS === 'ios'
+      ? { allowsEditing: true, aspect: [1, 1] }
+      : { allowsEditing: false };
+
   const persistAvatarImage = async (pid, uri) => {
     try {
       const dest = await savePickedAvatar(pid, uri);
@@ -63,39 +77,45 @@ export default function SwitchProfileScreen({ navigation }) {
     }
   };
 
-  const takePhoto = async () => {
-    if (!avatarModalProfileId) return;
+  const takePhoto = () => {
     const pid = avatarModalProfileId;
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(tx('profiles.permissionTitle'), tx('profiles.permissionCamera'));
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
+    if (!pid) return;
+    runAfterAvatarModalDismiss(() => {
+      void (async () => {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert(tx('profiles.permissionTitle'), tx('profiles.permissionCamera'));
+          return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+          ...imagePickerEditOptions,
+          quality: 0.85,
+        });
+        if (result.canceled || !result.assets?.[0]?.uri) return;
+        await persistAvatarImage(pid, result.assets[0].uri);
+      })();
     });
-    if (result.canceled || !result.assets?.[0]?.uri) return;
-    await persistAvatarImage(pid, result.assets[0].uri);
   };
 
-  const pickFromLibrary = async () => {
-    if (!avatarModalProfileId) return;
+  const pickFromLibrary = () => {
     const pid = avatarModalProfileId;
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(tx('profiles.permissionTitle'), tx('profiles.permissionPhotos'));
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
+    if (!pid) return;
+    runAfterAvatarModalDismiss(() => {
+      void (async () => {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert(tx('profiles.permissionTitle'), tx('profiles.permissionPhotos'));
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          ...imagePickerEditOptions,
+          quality: 0.85,
+        });
+        if (result.canceled || !result.assets?.[0]?.uri) return;
+        await persistAvatarImage(pid, result.assets[0].uri);
+      })();
     });
-    if (result.canceled || !result.assets?.[0]?.uri) return;
-    await persistAvatarImage(pid, result.assets[0].uri);
   };
 
   const choosePreset = async (presetId) => {
@@ -128,6 +148,7 @@ export default function SwitchProfileScreen({ navigation }) {
     <View style={styles.safe}>
       <ScrollView
         contentContainerStyle={styles.scroll}
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headlineBlock}>
@@ -137,6 +158,7 @@ export default function SwitchProfileScreen({ navigation }) {
         <View style={styles.bubbleRowWrap}>
           <ScrollView
             horizontal
+            keyboardDismissMode="on-drag"
             showsHorizontalScrollIndicator={false}
             style={styles.bubbleRowScroll}
             contentContainerStyle={styles.bubbleRowContent}

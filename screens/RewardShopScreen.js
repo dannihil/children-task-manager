@@ -14,7 +14,17 @@ export default function RewardShopScreen() {
   const { tx } = useLocale();
   const { colors, ready: themeReady } = useTheme();
   const styles = useMemo(() => createHomeStyles(colors), [colors]);
-  const { stars, rewards, redeemReward, hydrated, activeProfile } = useTaskRewards();
+  const {
+    stars,
+    rewards,
+    pendingRewardRequests,
+    requestRewardApproval,
+    approveRewardRequestByRewardId,
+    declineRewardRequestByRewardId,
+    hydrated,
+    activeProfile,
+  } = useTaskRewards();
+
   const [celebration, setCelebration] = useState(null);
 
   if (!hydrated || !themeReady) {
@@ -30,6 +40,7 @@ export default function RewardShopScreen() {
     <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <ScrollView
         contentContainerStyle={styles.shopScroll}
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.shopStarsBanner}>
@@ -56,6 +67,7 @@ export default function RewardShopScreen() {
         ) : (
           rewards.map((reward) => {
             const canBuy = stars >= reward.starCost;
+            const isPending = pendingRewardRequests.some((x) => x.rewardId === reward.id);
             return (
               <View key={reward.id} style={styles.rewardCard}>
                 <View style={styles.rewardInfo}>
@@ -71,32 +83,51 @@ export default function RewardShopScreen() {
                   variant="primary"
                   size="default"
                   fullWidth={false}
-                  disabled={!canBuy}
+                  disabled={!canBuy || isPending}
                   onPress={() => {
-                    if (!canBuy) return;
-                    const res = redeemReward(reward.id);
+                    if (!canBuy || isPending) return;
+                    const res = requestRewardApproval(reward.id);
                     if (res?.ok) {
-                      setCelebration({ title: res.title, starCost: res.starCost });
+                      setCelebration({
+                        rewardId: reward.id,
+                        title: reward.title,
+                        starCost: reward.starCost,
+                      });
                     }
                   }}
-                  accessibilityState={{ disabled: !canBuy }}
+                  accessibilityState={{ disabled: !canBuy || isPending }}
                   accessibilityLabel={tx('shop.buyA11y', {
                     title: reward.title,
                     cost: reward.starCost,
                   })}
                 >
-                  {canBuy ? tx('shop.getIt') : tx('shop.notYet')}
+                  {isPending ? tx('shop.pendingApproval') : canBuy ? tx('shop.getIt') : tx('shop.notYet')}
                 </GlassButton>
               </View>
             );
           })
         )}
       </ScrollView>
+
       <RewardCelebrationModal
         visible={Boolean(celebration)}
         rewardTitle={celebration?.title ?? ''}
         starCost={celebration?.starCost ?? 0}
+        pendingApproval
         onClose={() => setCelebration(null)}
+        onParentApprove={async () => {
+          if (!celebration) return { ok: false };
+          const res = approveRewardRequestByRewardId(celebration.rewardId);
+          if (res?.ok) {
+            setCelebration(null);
+          }
+          return res;
+        }}
+        onParentCancel={async () => {
+          if (!celebration) return { ok: false };
+          declineRewardRequestByRewardId(celebration.rewardId);
+          return { ok: true };
+        }}
       />
     </SafeAreaView>
   );

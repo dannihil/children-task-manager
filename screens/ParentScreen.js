@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -51,17 +52,11 @@ export default function ParentScreen() {
     attemptParentUnlock,
     syncParentPinFromStorage,
     changeParentPin,
+    setParentPin,
     parentAddTask,
     parentAddReward,
-    taskTemplates,
     parentRemoveTask,
     parentEditTask,
-    parentSaveReusableTask,
-    parentCopyTaskToReusable,
-    taskIsSavedAsReusable,
-    parentRemoveReusableTask,
-    parentEditReusableTask,
-    parentAddTaskFromTemplate,
     parentRemoveReward,
     parentResetStarProgress,
     parentAreaUnlocked,
@@ -76,12 +71,16 @@ export default function ParentScreen() {
   const [createPinConfirm, setCreatePinConfirm] = useState('');
   const [enterPin, setEnterPin] = useState('');
   const [lockErr, setLockErr] = useState(null);
+  const [forgotPinMode, setForgotPinMode] = useState(false);
+  const [forgotNewPin, setForgotNewPin] = useState('');
+  const [forgotNewPinConfirm, setForgotNewPinConfirm] = useState('');
   const [changeCurrentPin, setChangeCurrentPin] = useState('');
   const [changeNewPin, setChangeNewPin] = useState('');
   const [changeNewPinConfirm, setChangeNewPinConfirm] = useState('');
   const [pinFeedback, setPinFeedback] = useState(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskStars, setNewTaskStars] = useState('1');
+  const [newTaskRecurrence, setNewTaskRecurrence] = useState('daily');
   const [newRewardTitle, setNewRewardTitle] = useState('');
   const [newRewardCost, setNewRewardCost] = useState('5');
   const [newChildName, setNewChildName] = useState('');
@@ -89,12 +88,27 @@ export default function ParentScreen() {
   const [editing, setEditing] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editStars, setEditStars] = useState('1');
+  const [editTaskRecurrence, setEditTaskRecurrence] = useState('daily');
   const [langModalVisible, setLangModalVisible] = useState(false);
+
+  const formatRequestedAgo = useCallback(
+    (requestedAtMs) => {
+      const deltaMs = Date.now() - Number(requestedAtMs || 0);
+      const mins = Math.max(0, Math.floor(deltaMs / 60000));
+      if (mins <= 0) return tx('parent.requestedJustNow');
+      if (mins === 1) return tx('parent.requestedMinutesAgo_one', { count: mins });
+      return tx('parent.requestedMinutesAgo_other', { count: mins });
+    },
+    [tx]
+  );
 
   const resetLockForm = useCallback(() => {
     setCreatePin('');
     setCreatePinConfirm('');
     setEnterPin('');
+    setForgotPinMode(false);
+    setForgotNewPin('');
+    setForgotNewPinConfirm('');
     setLockErr(null);
   }, []);
 
@@ -117,6 +131,7 @@ export default function ParentScreen() {
         setEditing(null);
         setEditTitle('');
         setEditStars('1');
+        setEditTaskRecurrence('daily');
       };
     }, [lockParentArea, resetLockForm, syncParentPinFromStorage])
   );
@@ -143,25 +158,69 @@ export default function ParentScreen() {
     unlockParentArea();
   };
 
-  const submitTask = () => {
-    const n = parseInt(newTaskStars, 10);
-    const res = parentAddTask(newTaskTitle, Number.isFinite(n) ? n : 1);
-    if (res?.ok) {
-      setNewTaskTitle('');
-      setNewTaskStars('1');
-    } else if (res?.error === 'duplicate') {
-      Alert.alert('', tx('parent.activeTaskDuplicate'));
+  const submitForgotPinReset = () => {
+    setLockErr(null);
+    if (forgotNewPin.length < MIN_PIN_LENGTH) {
+      setLockErr({ key: 'lock.errorShort', params: { min: MIN_PIN_LENGTH } });
+      return;
     }
+    if (forgotNewPin !== forgotNewPinConfirm) {
+      setLockErr({ key: 'lock.errorMismatch' });
+      return;
+    }
+    Alert.alert(tx('lock.resetConfirmTitle'), tx('lock.resetConfirmMessage'), [
+      { text: tx('lock.cancel'), style: 'cancel' },
+      {
+        text: tx('lock.resetConfirmAction'),
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            const res = await setParentPin(forgotNewPin);
+            if (!res?.ok) {
+              setLockErr({ key: 'lock.errorShort', params: { min: MIN_PIN_LENGTH } });
+              return;
+            }
+            setForgotPinMode(false);
+            setForgotNewPin('');
+            setForgotNewPinConfirm('');
+            setEnterPin('');
+            Alert.alert(tx('lock.resetSuccessTitle'));
+          })();
+        },
+      },
+    ]);
   };
 
-  const submitReusableOnly = () => {
+  const requestForgotPinReset = async () => {
+    setLockErr(null);
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    const enrolled = hasHardware ? await LocalAuthentication.isEnrolledAsync() : false;
+    if (!hasHardware || !enrolled) {
+      setLockErr({ key: 'lock.resetNeedsDeviceAuth' });
+      return;
+    }
+    const auth = await LocalAuthentication.authenticateAsync({
+      promptMessage: tx('lock.resetAuthPrompt'),
+      fallbackLabel: tx('lock.resetAuthFallback'),
+      disableDeviceFallback: false,
+      cancelLabel: tx('lock.cancel'),
+    });
+    if (!auth.success) {
+      setLockErr({ key: 'lock.resetAuthFailed' });
+      return;
+    }
+    setForgotPinMode(true);
+  };
+
+  const submitTask = () => {
     const n = parseInt(newTaskStars, 10);
-    const res = parentSaveReusableTask(newTaskTitle, Number.isFinite(n) ? n : 1);
+    const res = parentAddTask(newTaskTitle, Number.isFinite(n) ? n : 1, newTaskRecurrence);
     if (res?.ok) {
       setNewTaskTitle('');
       setNewTaskStars('1');
+      setNewTaskRecurrence('daily');
     } else if (res?.error === 'duplicate') {
-      Alert.alert('', tx('parent.reusableDuplicate'));
+      Alert.alert('', tx('parent.activeTaskDuplicate'));
     }
   };
 
@@ -235,26 +294,33 @@ export default function ParentScreen() {
     setEditing(null);
     setEditTitle('');
     setEditStars('1');
+    setEditTaskRecurrence('daily');
   }, []);
 
   const startEditTask = useCallback((task) => {
     setEditing({ kind: 'task', id: task.id });
     setEditTitle(task.title);
     setEditStars(String(task.starsReward));
+    setEditTaskRecurrence(task?.recurrence ?? 'daily');
   }, []);
 
-  const startEditTemplate = useCallback((tpl) => {
-    setEditing({ kind: 'template', id: tpl.id });
-    setEditTitle(tpl.title);
-    setEditStars(String(tpl.starsReward));
-  }, []);
+  const recurrenceTxKeyFor = useCallback(
+    (recurrence) => {
+      const r = recurrence ?? 'daily';
+      if (r === 'none') return 'parent.taskRecurrenceNone';
+      if (r === 'weekdays') return 'parent.taskRecurrenceWeekdays';
+      if (r === 'weekend') return 'parent.taskRecurrenceWeekend';
+      return 'parent.taskRecurrenceDaily';
+    },
+    [tx]
+  );
 
   const saveTaskEdit = useCallback(() => {
     if (!editing) return;
     const n = parseInt(editStars, 10);
     const stars = Number.isFinite(n) ? n : 1;
     if (editing.kind === 'task') {
-      const res = parentEditTask(editing.id, editTitle, stars);
+      const res = parentEditTask(editing.id, editTitle, stars, editTaskRecurrence);
       if (res?.ok) {
         cancelEdit();
       } else if (res?.error === 'duplicate') {
@@ -262,18 +328,12 @@ export default function ParentScreen() {
       }
       return;
     }
-    const res = parentEditReusableTask(editing.id, editTitle, stars);
-    if (res?.ok) {
-      cancelEdit();
-    } else if (res?.error === 'duplicate') {
-      Alert.alert('', tx('parent.reusableDuplicate'));
-    }
   }, [
     editing,
     editTitle,
     editStars,
+    editTaskRecurrence,
     parentEditTask,
-    parentEditReusableTask,
     cancelEdit,
     tx,
   ]);
@@ -355,30 +415,90 @@ export default function ParentScreen() {
                 />
               </>
             ) : (
-              <TextInput
-                style={styles.input}
-                placeholder={tx('lock.placeholderPassword')}
-                placeholderTextColor={colors.textSecondary}
-                value={enterPin}
-                onChangeText={(v) => setEnterPin(digitsOnlyPin(v))}
-                keyboardType="number-pad"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                onSubmitEditing={unlock}
-              />
+              <>
+                {forgotPinMode ? (
+                  <>
+                    <Text style={styles.lockSub}>{tx('lock.resetPinSub')}</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={tx('lock.placeholderNew')}
+                      placeholderTextColor={colors.textSecondary}
+                      value={forgotNewPin}
+                      onChangeText={(v) => setForgotNewPin(digitsOnlyPin(v))}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder={tx('lock.placeholderConfirm')}
+                      placeholderTextColor={colors.textSecondary}
+                      value={forgotNewPinConfirm}
+                      onChangeText={(v) => setForgotNewPinConfirm(digitsOnlyPin(v))}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={tx('lock.placeholderPassword')}
+                      placeholderTextColor={colors.textSecondary}
+                      value={enterPin}
+                      onChangeText={(v) => setEnterPin(digitsOnlyPin(v))}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      onSubmitEditing={unlock}
+                    />
+                    <Pressable onPress={() => void requestForgotPinReset()} hitSlop={8}>
+                      <Text style={styles.lockForgotLink}>{tx('lock.forgotPin')}</Text>
+                    </Pressable>
+                  </>
+                )}
+              </>
             )}
             {lockErr ? (
               <Text style={styles.lockError}>{tx(lockErr.key, lockErr.params)}</Text>
             ) : null}
             <View style={styles.lockActions}>
-              <GlassButton
-                variant="lock"
-                onPress={unlock}
-                accessibilityLabel={tx('lock.continue')}
-              >
-                {tx('lock.continue')}
-              </GlassButton>
+              {forgotPinMode ? (
+                <>
+                  <GlassButton
+                    variant="lock"
+                    onPress={submitForgotPinReset}
+                    accessibilityLabel={tx('lock.resetPinButton')}
+                  >
+                    {tx('lock.resetPinButton')}
+                  </GlassButton>
+                  <GlassButton
+                    variant="secondary"
+                    style={styles.lockCancelForgotButton}
+                    onPress={() => {
+                      setForgotPinMode(false);
+                      setForgotNewPin('');
+                      setForgotNewPinConfirm('');
+                      setLockErr(null);
+                    }}
+                    accessibilityLabel={tx('lock.cancelResetPin')}
+                  >
+                    {tx('lock.cancelResetPin')}
+                  </GlassButton>
+                </>
+              ) : (
+                <GlassButton
+                  variant="lock"
+                  onPress={unlock}
+                  accessibilityLabel={tx('lock.continue')}
+                >
+                  {tx('lock.continue')}
+                </GlassButton>
+              )}
             </View>
           </View>
         </View>
@@ -437,6 +557,7 @@ export default function ParentScreen() {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.scroll}
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -650,12 +771,43 @@ export default function ParentScreen() {
               onChangeText={setNewTaskStars}
             />
           </View>
+          <View style={styles.recurrenceRow}>
+            {[
+              { key: 'daily', label: tx('parent.taskRecurrenceDaily') },
+              { key: 'weekdays', label: tx('parent.taskRecurrenceWeekdays') },
+              { key: 'weekend', label: tx('parent.taskRecurrenceWeekend') },
+              { key: 'none', label: tx('parent.taskRecurrenceNone') },
+            ].map((opt) => {
+              const active = newTaskRecurrence === opt.key;
+              return (
+                <Pressable
+                  key={opt.key}
+                  onPress={() => setNewTaskRecurrence(opt.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.label}
+                >
+                  <View
+                    style={[
+                      styles.recurrenceChip,
+                      active ? styles.recurrenceChipActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.recurrenceChipText,
+                        active ? styles.recurrenceChipTextActive : null,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
           <View style={styles.buttonStack}>
             <GlassButton variant="primary" onPress={submitTask}>
               {tx('parent.addTaskButton')}
-            </GlassButton>
-            <GlassButton variant="secondary" onPress={submitReusableOnly}>
-              {tx('parent.saveReusableOnly')}
             </GlassButton>
           </View>
         </SectionCard>
@@ -688,6 +840,40 @@ export default function ParentScreen() {
                         onChangeText={setEditStars}
                       />
                     </View>
+                    <View style={[styles.recurrenceRow, { marginBottom: 0, marginTop: 4 }]}>
+                      {[
+                        { key: 'daily', label: tx('parent.taskRecurrenceDaily') },
+                        { key: 'weekdays', label: tx('parent.taskRecurrenceWeekdays') },
+                        { key: 'weekend', label: tx('parent.taskRecurrenceWeekend') },
+                        { key: 'none', label: tx('parent.taskRecurrenceNone') },
+                      ].map((opt) => {
+                        const active = editTaskRecurrence === opt.key;
+                        return (
+                          <Pressable
+                            key={opt.key}
+                            onPress={() => setEditTaskRecurrence(opt.key)}
+                            accessibilityRole="button"
+                            accessibilityLabel={opt.label}
+                          >
+                            <View
+                              style={[
+                                styles.recurrenceChip,
+                                active ? styles.recurrenceChipActive : null,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.recurrenceChipText,
+                                  active ? styles.recurrenceChipTextActive : null,
+                                ]}
+                              >
+                                {opt.label}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                     <View style={styles.editFormActions}>
                       <GlassButton
                         variant="secondary"
@@ -714,6 +900,11 @@ export default function ParentScreen() {
                           +{task.starsReward} ★
                         </Text>
                       </View>
+                      <View style={styles.taskRecurrenceBadge}>
+                        <Text style={styles.taskRecurrenceBadgeText}>
+                          {tx(recurrenceTxKeyFor(task?.recurrence))}
+                        </Text>
+                      </View>
                     </View>
                     <View style={styles.taskActionRow}>
                       <GlassButton
@@ -724,130 +915,10 @@ export default function ParentScreen() {
                       >
                         {tx('parent.editTask')}
                       </GlassButton>
-                      {taskIsSavedAsReusable(task.id) ? (
-                        <Text
-                          style={[styles.reusableSavedChip, styles.reusableSavedChipText]}
-                          accessibilityRole="text"
-                          accessibilityLabel={tx('parent.saveTaskAsReusableSaved')}
-                        >
-                          {tx('parent.saveTaskAsReusableSaved')}
-                        </Text>
-                      ) : (
-                        <GlassButton
-                          variant="chipPrimary"
-                          fullWidth={false}
-                          onPress={() => {
-                            const res = parentCopyTaskToReusable(task.id);
-                            if (!res?.ok && res?.error === 'duplicate') {
-                              Alert.alert('', tx('parent.reusableDuplicate'));
-                            }
-                          }}
-                          accessibilityLabel={tx('parent.saveTaskAsReusable')}
-                        >
-                          {tx('parent.saveTaskAsReusable')}
-                        </GlassButton>
-                      )}
                       <GlassButton
                         variant="chipDanger"
                         fullWidth={false}
                         onPress={() => parentRemoveTask(task.id)}
-                        accessibilityLabel={tx('parent.remove')}
-                      >
-                        {tx('parent.remove')}
-                      </GlassButton>
-                    </View>
-                  </View>
-                )}
-              </View>
-            ))
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title={tx('parent.reusableTasks')}
-          description={tx('parent.reusableSub')}
-          styles={styles}
-        >
-          {taskTemplates.length === 0 ? (
-            <Text style={styles.emptyHint}>{tx('parent.emptyReusable')}</Text>
-          ) : (
-            taskTemplates.map((tpl, i) => (
-              <View
-                key={tpl.id}
-                style={[styles.editRowBlock, i === 0 && styles.editRowBlockFirst]}
-              >
-                {editing?.kind === 'template' && editing.id === tpl.id ? (
-                  <>
-                    <TextInput
-                      style={styles.input}
-                      placeholder={tx('parent.taskNamePlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={editTitle}
-                      onChangeText={setEditTitle}
-                    />
-                    <View style={styles.editFormStarsRow}>
-                      <TextInput
-                        style={[styles.input, styles.editFormStarsInput]}
-                        placeholder={tx('parent.starsWhenDonePlaceholder')}
-                        placeholderTextColor={colors.textSecondary}
-                        keyboardType="number-pad"
-                        value={editStars}
-                        onChangeText={setEditStars}
-                      />
-                    </View>
-                    <View style={styles.editFormActions}>
-                      <GlassButton
-                        variant="secondary"
-                        style={styles.editFormActionFlex}
-                        onPress={cancelEdit}
-                      >
-                        {tx('lock.cancel')}
-                      </GlassButton>
-                      <GlassButton
-                        variant="primary"
-                        style={styles.editFormActionFlex}
-                        onPress={saveTaskEdit}
-                      >
-                        {tx('parent.saveEdits')}
-                      </GlassButton>
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.taskItemStack}>
-                    <Text style={styles.taskItemTitle}>{tpl.title}</Text>
-                    <View style={styles.taskItemMetaRow}>
-                      <View style={styles.taskStarBadge}>
-                        <Text style={styles.taskStarBadgeText}>
-                          +{tpl.starsReward} ★
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.taskActionRow}>
-                      <GlassButton
-                        variant="chipPrimary"
-                        fullWidth={false}
-                        onPress={() => startEditTemplate(tpl)}
-                        accessibilityLabel={tx('parent.editTask')}
-                      >
-                        {tx('parent.editTask')}
-                      </GlassButton>
-                      <GlassButton
-                        variant="chipPrimary"
-                        fullWidth={false}
-                        onPress={() => {
-                          const res = parentAddTaskFromTemplate(tpl.id);
-                          if (!res?.ok && res?.error === 'duplicate') {
-                            Alert.alert('', tx('parent.activeTaskDuplicate'));
-                          }
-                        }}
-                        accessibilityLabel={tx('parent.addReusableToList')}
-                      >
-                        {tx('parent.addReusableToList')}
-                      </GlassButton>
-                      <GlassButton
-                        variant="chipDanger"
-                        fullWidth={false}
-                        onPress={() => parentRemoveReusableTask(tpl.id)}
                         accessibilityLabel={tx('parent.remove')}
                       >
                         {tx('parent.remove')}
@@ -962,6 +1033,7 @@ export default function ParentScreen() {
               </View>
               <ScrollView
                 style={styles.langModalList}
+                keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >

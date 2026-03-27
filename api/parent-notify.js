@@ -128,6 +128,11 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+function stripHtmlTags(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/<[^>]*>/g, '').trim();
+}
+
 function normalizeStarCount(n) {
   const x = Number(n);
   if (!Number.isFinite(x) || x < 0) return 0;
@@ -199,13 +204,13 @@ function buildEmail(body) {
   const { kind, childName, taskTitle, starsEarned, rewardTitle, starCost, totalStars, locale } =
     body;
   const dict = emailDict(locale);
-  const who =
-    typeof childName === 'string' && childName.trim() ? childName.trim() : dict.defaultChild;
+  const cleanedChildName = stripHtmlTags(childName);
+  const who = cleanedChildName || stripHtmlTags(dict.defaultChild);
   const total = normalizeStarCount(totalStars);
 
   if (kind === 'task_complete') {
-    const rawTitle = typeof taskTitle === 'string' ? taskTitle.trim() : '';
-    const titleText = rawTitle || dict.fallbackTask;
+    const rawTitle = stripHtmlTags(taskTitle);
+    const titleText = rawTitle || stripHtmlTags(dict.fallbackTask);
     const stars = normalizeStarCount(starsEarned);
     const subject = interpolate(dict.taskSubject, { childName: who });
     const line1 = interpolate(dict.taskBodyLine1, {
@@ -224,8 +229,8 @@ function buildEmail(body) {
   }
 
   if (kind === 'reward_redeem') {
-    const rawTitle = typeof rewardTitle === 'string' ? rewardTitle.trim() : '';
-    const titleText = rawTitle || dict.fallbackReward;
+    const rawTitle = stripHtmlTags(rewardTitle);
+    const titleText = rawTitle || stripHtmlTags(dict.fallbackReward);
     const cost = normalizeStarCount(starCost);
     const subject = interpolate(dict.rewardSubject, { childName: who });
     const line1 = interpolate(dict.rewardBodyLine1, {

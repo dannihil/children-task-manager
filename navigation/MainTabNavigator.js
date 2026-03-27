@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBar, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useMemo } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale } from '../context/LocaleContext';
 import { useTaskRewards } from '../context/TaskRewardsContext';
 import { useTheme } from '../context/ThemeContext';
@@ -29,6 +30,7 @@ export default function MainTabNavigator() {
   const { colors } = useTheme();
   const { tx } = useLocale();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { lockParentArea } = useTaskRewards();
 
   /** Leaving MainTabs (e.g. Switch Profile) must lock even if Parent tab stays selected in memory. */
@@ -48,8 +50,8 @@ export default function MainTabNavigator() {
         backgroundColor: colors.surface,
         borderTopWidth: 0,
         paddingTop: 6,
-        paddingBottom: 8,
-        height: 64,
+        paddingBottom: Math.max(insets.bottom, 10),
+        height: 58 + Math.max(insets.bottom, 10),
         shadowColor: colors.cardShadow,
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.1,
@@ -64,7 +66,7 @@ export default function MainTabNavigator() {
       tabBarIconStyle: { marginTop: 2 },
       tabBarHideOnKeyboard: true,
     }),
-    [colors]
+    [colors, insets.bottom]
   );
 
   return (

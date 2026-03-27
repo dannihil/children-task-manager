@@ -30,12 +30,26 @@ export default function HomeScreen({ navigation }) {
   } = useTaskRewards();
 
   const dayKey = todayKey();
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun ... 6=Sat
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
   const COMPLETED_VISIBLE = 3;
 
-  const { activeTasks, completedToday, completedTodayTotal } = useMemo(() => {
+  const { activeTasks, completedToday, completedTodayTotal, scheduledTodayCount } =
+    useMemo(() => {
     const active = [];
     const done = [];
     for (const task of tasks) {
+      const recurrence = task?.recurrence ?? 'daily';
+      const scheduledToday =
+        recurrence === 'none'
+          ? task.lastCompletedDate == null || task.lastCompletedDate === dayKey
+          : recurrence === 'daily' ||
+            (recurrence === 'weekdays' && !isWeekend) ||
+            (recurrence === 'weekend' && isWeekend);
+
+      if (!scheduledToday) continue;
+
       if (task.lastCompletedDate === dayKey) done.push(task);
       else active.push(task);
     }
@@ -45,8 +59,9 @@ export default function HomeScreen({ navigation }) {
       activeTasks: active,
       completedToday: done.slice(0, COMPLETED_VISIBLE),
       completedTodayTotal: total,
+      scheduledTodayCount: active.length + done.length,
     };
-  }, [tasks, dayKey]);
+  }, [tasks, dayKey, isWeekend]);
 
   const nextReward = useMemo(() => {
     const affordable = rewards.filter((r) => r.starCost <= stars);
@@ -89,6 +104,7 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         <Pressable
@@ -135,7 +151,9 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.empty}>
               {tasks.length === 0
                 ? tx("tasks.emptyNoTasks")
-                : tx("tasks.emptyAllDone")}
+                : scheduledTodayCount === 0
+                  ? tx("tasks.emptyNoneScheduled")
+                  : tx("tasks.emptyAllDone")}
             </Text>
           ) : (
             activeTasks.map((task) => (

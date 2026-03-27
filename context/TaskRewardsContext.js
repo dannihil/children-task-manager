@@ -67,6 +67,11 @@ async function loadParentPinHashFromStorage() {
 
 export const todayKey = () => new Date().toDateString();
 
+function normalizeRecurrence(r) {
+  if (r === 'daily' || r === 'weekdays' || r === 'weekend' || r === 'none') return r;
+  return 'daily';
+}
+
 function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -87,11 +92,29 @@ function normalizeProfileEntry(p) {
   };
 }
 
+function normalizePendingRewardRequests(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((x) => {
+      if (!x || typeof x !== 'object') return null;
+      if (typeof x.id !== 'string' || typeof x.rewardId !== 'string') return null;
+      if (typeof x.title !== 'string') return null;
+      return {
+        id: x.id,
+        rewardId: x.rewardId,
+        title: x.title,
+        starCost: Math.max(1, Number(x.starCost) || 1),
+        requestedAtMs: Number.isFinite(x.requestedAtMs) ? x.requestedAtMs : Date.now(),
+      };
+    })
+    .filter(Boolean);
+}
+
 const initialState = {
   profiles: [
     {
       id: DEFAULT_PROFILE_ID,
-      name: 'Child',
+      name: '',
       avatarPreset: null,
       avatarUri: null,
     },
@@ -288,6 +311,45 @@ function reducer(state, action) {
         if (!reward || prog.stars < reward.starCost) return prog;
         return { ...prog, stars: prog.stars - reward.starCost };
       });
+    case 'REQUEST_REWARD_APPROVAL':
+      return mapActiveProfile(state, (prog) => {
+        const reward = prog.rewards.find((x) => x.id === action.rewardId);
+        if (!reward || prog.stars < reward.starCost) return prog;
+        const pending = normalizePendingRewardRequests(prog.pendingRewardRequests);
+        if (pending.some((x) => x.rewardId === action.rewardId)) return prog;
+        return {
+          ...prog,
+          pendingRewardRequests: [
+            ...pending,
+            {
+              id: generateId(),
+              rewardId: reward.id,
+              title: reward.title,
+              starCost: reward.starCost,
+              requestedAtMs: Date.now(),
+            },
+          ],
+        };
+      });
+    case 'APPROVE_REWARD_REQUEST':
+      return mapActiveProfile(state, (prog) => {
+        const pending = normalizePendingRewardRequests(prog.pendingRewardRequests);
+        const req = pending.find((x) => x.id === action.requestId);
+        if (!req) return prog;
+        if (prog.stars < req.starCost) return prog;
+        return {
+          ...prog,
+          stars: prog.stars - req.starCost,
+          pendingRewardRequests: pending.filter((x) => x.id !== action.requestId),
+        };
+      });
+    case 'DECLINE_REWARD_REQUEST':
+      return mapActiveProfile(state, (prog) => ({
+        ...prog,
+        pendingRewardRequests: normalizePendingRewardRequests(prog.pendingRewardRequests).filter(
+          (x) => x.id !== action.requestId
+        ),
+      }));
     case 'PARENT_ADD_TASK':
       return mapActiveProfile(state, (prog) => ({
         ...prog,
@@ -298,6 +360,7 @@ function reducer(state, action) {
             title: action.title.trim(),
             starsReward: Math.max(1, action.starsReward || 1),
             lastCompletedDate: null,
+            recurrence: normalizeRecurrence(action.recurrence),
           },
         ],
       }));
@@ -327,7 +390,14 @@ function reducer(state, action) {
         return {
           ...prog,
           tasks: prog.tasks.map((x) =>
-            x.id === action.taskId ? { ...x, title, starsReward } : x
+            x.id === action.taskId
+              ? {
+                  ...x,
+                  title,
+                  starsReward,
+                  recurrence: normalizeRecurrence(action.recurrence ?? x.recurrence),
+                }
+              : x
           ),
         };
       });
@@ -346,6 +416,7 @@ function reducer(state, action) {
               id: generateId(),
               title,
               starsReward,
+              recurrence: normalizeRecurrence(action.recurrence),
             },
           ],
         };
@@ -364,6 +435,7 @@ function reducer(state, action) {
               id: generateId(),
               title: src.title,
               starsReward: src.starsReward,
+              recurrence: normalizeRecurrence(src.recurrence),
             },
           ],
         };
@@ -386,7 +458,14 @@ function reducer(state, action) {
         return {
           ...prog,
           taskTemplates: prog.taskTemplates.map((x) =>
-            x.id === action.templateId ? { ...x, title, starsReward } : x
+            x.id === action.templateId
+              ? {
+                  ...x,
+                  title,
+                  starsReward,
+                  recurrence: normalizeRecurrence(action.recurrence ?? x.recurrence),
+                }
+              : x
           ),
         };
       });
@@ -404,6 +483,7 @@ function reducer(state, action) {
               title: tpl.title,
               starsReward: tpl.starsReward,
               lastCompletedDate: null,
+              recurrence: normalizeRecurrence(tpl.recurrence),
             },
           ],
         };
@@ -413,6 +493,9 @@ function reducer(state, action) {
       return mapActiveProfile(state, (prog) => ({
         ...prog,
         rewards: prog.rewards.filter((x) => x.id !== action.rewardId),
+        pendingRewardRequests: normalizePendingRewardRequests(prog.pendingRewardRequests).filter(
+          (x) => x.rewardId !== action.rewardId
+        ),
       }));
     case 'PARENT_RESET_STAR_PROGRESS': {
       const tk = todayKey();
@@ -442,12 +525,44 @@ function normalizePersisted(parsed) {
     parsed.progressByProfile &&
     typeof parsed.progressByProfile === 'object'
   ) {
+    const onboardingSettings = appSettingsFromParsed(parsed);
     const profiles = parsed.profiles.map(normalizeProfileEntry).filter(Boolean);
+    // Migration: old saves seeded onboarding with "Child"; keep first onboarding input empty.
+    if (
+      !onboardingSettings.onboardingComplete &&
+      profiles.length === 1 &&
+      profiles[0].id === DEFAULT_PROFILE_ID &&
+      profiles[0].name.trim() === 'Child'
+    ) {
+      profiles[0] = { ...profiles[0], name: '' };
+    }
     if (profiles.length === 0) return null;
     const progressByProfile = { ...parsed.progressByProfile };
     for (const p of profiles) {
       if (!progressByProfile[p.id]) {
         progressByProfile[p.id] = createDefaultProgressForLanguage('en');
+      } else {
+        const existing = progressByProfile[p.id];
+        const nextTasks =
+          existing?.tasks && Array.isArray(existing.tasks)
+            ? existing.tasks.map((t) => ({
+                ...t,
+                recurrence: normalizeRecurrence(t?.recurrence),
+              }))
+            : existing?.tasks;
+        const nextTemplates =
+          existing?.taskTemplates && Array.isArray(existing.taskTemplates)
+            ? existing.taskTemplates.map((tpl) => ({
+                ...tpl,
+                recurrence: normalizeRecurrence(tpl?.recurrence),
+              }))
+            : existing?.taskTemplates;
+        progressByProfile[p.id] = {
+          ...existing,
+          tasks: nextTasks,
+          taskTemplates: nextTemplates,
+          pendingRewardRequests: normalizePendingRewardRequests(existing.pendingRewardRequests),
+        };
       }
     }
     let activeProfileId = parsed.activeProfileId;
@@ -462,22 +577,30 @@ function normalizePersisted(parsed) {
         parsed.parentPinHash == null
           ? null
           : String(parsed.parentPinHash).trim().toLowerCase(),
-      ...appSettingsFromParsed(parsed),
+      ...onboardingSettings,
     };
   }
   const id = generateId();
   const seedEn = createDefaultProgressForLanguage('en');
   const legacyTasks = Array.isArray(parsed.tasks) ? parsed.tasks : seedEn.tasks;
   const legacyRewards = Array.isArray(parsed.rewards) ? parsed.rewards : seedEn.rewards;
+  const legacyTemplates = Array.isArray(parsed.taskTemplates) ? parsed.taskTemplates : [];
   return {
-    profiles: [normalizeProfileEntry({ id, name: 'Child', avatarPreset: null, avatarUri: null })],
+    profiles: [normalizeProfileEntry({ id, name: '', avatarPreset: null, avatarUri: null })],
     activeProfileId: id,
     progressByProfile: {
       [id]: {
         stars: typeof parsed.stars === 'number' && parsed.stars >= 0 ? parsed.stars : 0,
-        tasks: legacyTasks,
-        taskTemplates: Array.isArray(parsed.taskTemplates) ? parsed.taskTemplates : [],
+        tasks: (legacyTasks ?? []).map((t) => ({
+          ...t,
+          recurrence: normalizeRecurrence(t?.recurrence),
+        })),
+        taskTemplates: legacyTemplates.map((tpl) => ({
+          ...tpl,
+          recurrence: normalizeRecurrence(tpl?.recurrence),
+        })),
         rewards: legacyRewards,
+        pendingRewardRequests: normalizePendingRewardRequests(parsed.pendingRewardRequests),
       },
     },
     parentPinHash:
@@ -642,6 +765,19 @@ export function TaskRewardsProvider({ children }) {
       const task = prog?.tasks.find((x) => x.id === taskId);
       const tk = todayKey();
       if (!task || task.lastCompletedDate === tk) return;
+      const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
+      const weekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const recurrence = task?.recurrence ?? 'daily';
+      if (recurrence === 'none') {
+        // One-time tasks disappear after completion.
+        if (task.lastCompletedDate != null) return;
+      } else {
+        const scheduledToday =
+          recurrence === 'daily' ||
+          (recurrence === 'weekdays' && !weekend) ||
+          (recurrence === 'weekend' && weekend);
+        if (!scheduledToday) return;
+      }
       const profile = state.profiles.find((p) => p.id === id);
       const totalAfter = (prog?.stars ?? 0) + (task.starsReward ?? 0);
       dispatch({ type: 'COMPLETE_TASK', taskId });
@@ -700,15 +836,90 @@ export function TaskRewardsProvider({ children }) {
     ]
   );
 
+  const requestRewardApproval = useCallback(
+    (rewardId) => {
+      const reward = activeProgress.rewards.find((x) => x.id === rewardId);
+      if (!reward) return { ok: false, error: 'missing' };
+      if (activeProgress.stars < reward.starCost) return { ok: false, error: 'stars' };
+      const pending = normalizePendingRewardRequests(activeProgress.pendingRewardRequests);
+      if (pending.some((x) => x.rewardId === rewardId)) return { ok: false, error: 'duplicate' };
+      dispatch({ type: 'REQUEST_REWARD_APPROVAL', rewardId });
+      return { ok: true, title: reward.title };
+    },
+    [activeProgress.rewards, activeProgress.stars, activeProgress.pendingRewardRequests]
+  );
+
+  const approveRewardRequest = useCallback(
+    (requestId) => {
+      const pending = normalizePendingRewardRequests(activeProgress.pendingRewardRequests);
+      const req = pending.find((x) => x.id === requestId);
+      if (!req) return { ok: false, error: 'missing' };
+      if (activeProgress.stars < req.starCost) return { ok: false, error: 'stars' };
+      const profile = state.profiles.find((p) => p.id === state.activeProfileId);
+      const totalAfter = activeProgress.stars - req.starCost;
+      dispatch({ type: 'APPROVE_REWARD_REQUEST', requestId });
+      void notifyParentEvent({
+        kind: 'reward_redeem',
+        to: state.parentEmail,
+        notifyEnabled: state.emailNotifyRewardRedeem,
+        childName: profile?.name ?? '',
+        rewardTitle: req.title,
+        starCost: req.starCost,
+        totalStars: totalAfter,
+        locale: language,
+      });
+      return { ok: true };
+    },
+    [
+      activeProgress.pendingRewardRequests,
+      activeProgress.stars,
+      state.profiles,
+      state.activeProfileId,
+      state.parentEmail,
+      state.emailNotifyRewardRedeem,
+      language,
+    ]
+  );
+
+  const declineRewardRequest = useCallback((requestId) => {
+    dispatch({ type: 'DECLINE_REWARD_REQUEST', requestId });
+    return { ok: true };
+  }, []);
+
+  const approveRewardRequestByRewardId = useCallback(
+    (rewardId) => {
+      const pending = normalizePendingRewardRequests(activeProgress.pendingRewardRequests);
+      const req = pending.find((x) => x.rewardId === rewardId);
+      if (!req) return { ok: false, error: 'missing' };
+      return approveRewardRequest(req.id);
+    },
+    [activeProgress.pendingRewardRequests, approveRewardRequest]
+  );
+
+  const declineRewardRequestByRewardId = useCallback(
+    (rewardId) => {
+      const pending = normalizePendingRewardRequests(activeProgress.pendingRewardRequests);
+      const req = pending.find((x) => x.rewardId === rewardId);
+      if (!req) return { ok: false, error: 'missing' };
+      return declineRewardRequest(req.id);
+    },
+    [activeProgress.pendingRewardRequests, declineRewardRequest]
+  );
+
   const parentAddTask = useCallback(
-    (title, starsReward) => {
+    (title, starsReward, recurrence = 'daily') => {
       const t = title?.trim();
       if (!t) return { ok: false, error: 'empty' };
       const stars = Math.max(1, Number(starsReward) || 1);
       if (isActiveTaskDuplicate(activeProgress.tasks, t, stars)) {
         return { ok: false, error: 'duplicate' };
       }
-      dispatch({ type: 'PARENT_ADD_TASK', title, starsReward });
+      dispatch({
+        type: 'PARENT_ADD_TASK',
+        title,
+        starsReward,
+        recurrence: normalizeRecurrence(recurrence),
+      });
       return { ok: true };
     },
     [activeProgress.tasks]
@@ -724,21 +935,27 @@ export function TaskRewardsProvider({ children }) {
   }, []);
 
   const parentEditTask = useCallback(
-    (taskId, title, starsReward) => {
+    (taskId, title, starsReward, recurrence = 'daily') => {
       const t = title?.trim();
       if (!t) return { ok: false, error: 'empty' };
       const stars = Math.max(1, Number(starsReward) || 1);
       if (isActiveTaskDuplicate(activeProgress.tasks, t, stars, taskId)) {
         return { ok: false, error: 'duplicate' };
       }
-      dispatch({ type: 'PARENT_EDIT_TASK', taskId, title, starsReward });
+      dispatch({
+        type: 'PARENT_EDIT_TASK',
+        taskId,
+        title,
+        starsReward,
+        recurrence: normalizeRecurrence(recurrence),
+      });
       return { ok: true };
     },
     [activeProgress.tasks]
   );
 
   const parentSaveReusableTask = useCallback(
-    (title, starsReward) => {
+    (title, starsReward, recurrence = 'daily') => {
       const t = title?.trim();
       if (!t) return { ok: false, error: 'empty' };
       const stars = Math.max(1, Number(starsReward) || 1);
@@ -749,6 +966,7 @@ export function TaskRewardsProvider({ children }) {
         type: 'PARENT_SAVE_REUSABLE_TASK',
         title,
         starsReward,
+        recurrence: normalizeRecurrence(recurrence),
       });
       return { ok: true };
     },
@@ -782,14 +1000,20 @@ export function TaskRewardsProvider({ children }) {
   }, []);
 
   const parentEditReusableTask = useCallback(
-    (templateId, title, starsReward) => {
+    (templateId, title, starsReward, recurrence = 'daily') => {
       const t = title?.trim();
       if (!t) return { ok: false, error: 'empty' };
       const stars = Math.max(1, Number(starsReward) || 1);
       if (isReusableDuplicate(activeProgress.taskTemplates, t, stars, templateId)) {
         return { ok: false, error: 'duplicate' };
       }
-      dispatch({ type: 'PARENT_EDIT_REUSABLE_TASK', templateId, title, starsReward });
+      dispatch({
+        type: 'PARENT_EDIT_REUSABLE_TASK',
+        templateId,
+        title,
+        starsReward,
+        recurrence: normalizeRecurrence(recurrence),
+      });
       return { ok: true };
     },
     [activeProgress.taskTemplates]
@@ -894,7 +1118,7 @@ export function TaskRewardsProvider({ children }) {
       stars: activeProgress.stars,
       tasks: activeProgress.tasks,
       rewards: activeProgress.rewards,
-      taskTemplates: activeProgress.taskTemplates,
+      pendingRewardRequests: normalizePendingRewardRequests(activeProgress.pendingRewardRequests),
       hydrated,
       hasParentPin,
       onboardingComplete: state.onboardingComplete,
@@ -916,16 +1140,15 @@ export function TaskRewardsProvider({ children }) {
       setProfileAvatar,
       completeTask,
       redeemReward,
+      requestRewardApproval,
+      approveRewardRequest,
+      declineRewardRequest,
+      approveRewardRequestByRewardId,
+      declineRewardRequestByRewardId,
       parentAddTask,
       parentAddReward,
       parentRemoveTask,
       parentEditTask,
-      parentSaveReusableTask,
-      parentCopyTaskToReusable,
-      taskIsSavedAsReusable,
-      parentRemoveReusableTask,
-      parentEditReusableTask,
-      parentAddTaskFromTemplate,
       parentRemoveReward,
       parentResetStarProgress,
       parentAreaUnlocked,
@@ -960,16 +1183,15 @@ export function TaskRewardsProvider({ children }) {
       setProfileAvatar,
       completeTask,
       redeemReward,
+      requestRewardApproval,
+      approveRewardRequest,
+      declineRewardRequest,
+      approveRewardRequestByRewardId,
+      declineRewardRequestByRewardId,
       parentAddTask,
       parentAddReward,
       parentRemoveTask,
       parentEditTask,
-      parentSaveReusableTask,
-      parentCopyTaskToReusable,
-      taskIsSavedAsReusable,
-      parentRemoveReusableTask,
-      parentEditReusableTask,
-      parentAddTaskFromTemplate,
       parentRemoveReward,
       parentResetStarProgress,
     ]

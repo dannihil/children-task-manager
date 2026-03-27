@@ -9,8 +9,8 @@ import { createOnboardingStyles } from './onboardingScreenStyles';
 
 export default function OnboardingEmailScreen({ navigation }) {
   const { tx } = useLocale();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createOnboardingStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createOnboardingStyles(colors, isDark), [colors, isDark]);
   const {
     parentEmail,
     emailNotifyTaskComplete,
@@ -35,6 +35,7 @@ export default function OnboardingEmailScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

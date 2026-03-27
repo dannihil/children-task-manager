@@ -47,7 +47,7 @@ function overlayFor(kind, isDark, disabled) {
     case 'secondary':
       return isDark ? 'rgba(255,255,255,0.06)' : 'rgba(8,90,75,0.12)';
     default:
-      return isDark ? 'rgba(77,205,232,0.22)' : 'rgba(6,82,68,0.58)';
+      return isDark ? 'rgba(82,223,198,0.24)' : 'rgba(34,190,163,0.62)';
   }
 }
 
@@ -59,7 +59,7 @@ function sheenFor(kind, isDark) {
   if (kind === 'secondary' || kind === 'chipPrimary') {
     return isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.22)';
   }
-  return isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.22)';
+  return isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.24)';
 }
 
 function borderFor(kind, isDark) {

@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef } from 'react';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Alert,
   Modal,
   StyleSheet,
   Text,
@@ -24,12 +26,21 @@ const PARTICLE_LAYOUT = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
   colorKey: i % 4,
 }));
 
-export function RewardCelebrationModal({ visible, onClose, rewardTitle, starCost }) {
+export function RewardCelebrationModal({
+  visible,
+  onClose,
+  rewardTitle,
+  starCost,
+  pendingApproval = false,
+  onParentApprove,
+  onParentCancel,
+}) {
   const { tx } = useLocale();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const styles = useMemo(() => createStyles(colors, insets), [colors, insets]);
+  const [authBusy, setAuthBusy] = useState(false);
 
   const particleColors = useMemo(
     () => [colors.starGold, colors.primary, colors.success, colors.starGoldDark],
@@ -101,11 +112,62 @@ export function RewardCelebrationModal({ visible, onClose, rewardTitle, starCost
     return () => pulse.stop();
   }, [visible]);
 
-  const spentLine =
-    starCost === 1
+  const spentLine = pendingApproval
+    ? starCost === 1
+      ? tx('shop.celebrationPendingSpent_one')
+      : tx('shop.celebrationPendingSpent_other', { n: starCost })
+    : starCost === 1
       ? tx('shop.celebrationSpent_one')
       : tx('shop.celebrationSpent_other', { n: starCost });
 
+  const approveFromModal = async () => {
+    if (authBusy) return;
+    if (!onParentApprove) return;
+    setAuthBusy(true);
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      if (!hasHardware) {
+        Alert.alert('', tx('lock.resetNeedsDeviceAuth'));
+        return;
+      }
+
+      const auth = await LocalAuthentication.authenticateAsync({
+        promptMessage: tx('lock.resetAuthPrompt'),
+        fallbackLabel: tx('lock.resetAuthFallback'),
+        cancelLabel: tx('lock.cancel'),
+        disableDeviceFallback: false,
+      });
+
+      if (!auth.success) {
+        Alert.alert('', tx('lock.resetAuthFailed'));
+        return;
+      }
+
+      const res = await onParentApprove();
+      if (res?.ok === false) {
+        // parent decision / star validation errors handled by caller if needed
+        Alert.alert('', tx('shop.approveFailed'));
+        return;
+      }
+
+      onClose?.();
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const cancelLabel = pendingApproval ? tx('lock.cancel') : tx('shop.celebrationButton');
+
+  const cancelFromModal = async () => {
+    if (authBusy) return;
+    try {
+      if (pendingApproval && onParentCancel) {
+        await onParentCancel();
+      }
+    } finally {
+      onClose?.();
+    }
+  };
   return (
     <Modal
       visible={visible}
@@ -190,9 +252,30 @@ export function RewardCelebrationModal({ visible, onClose, rewardTitle, starCost
               <Text style={styles.spent}>{spentLine}</Text>
             </View>
             <Text style={styles.showParent}>{tx('shop.celebrationShowParent')}</Text>
-            <GlassButton variant="primary" onPress={onClose} accessibilityRole="button">
-              {tx('shop.celebrationButton')}
-            </GlassButton>
+            {pendingApproval ? (
+              <View style={styles.pendingButtonsCol}>
+                <GlassButton
+                  variant="secondary"
+                  onPress={approveFromModal}
+                  disabled={authBusy}
+                  accessibilityLabel={tx('shop.approvePurchaseA11y')}
+                >
+                  {tx('shop.approvePurchase')}
+                </GlassButton>
+                <GlassButton
+                  variant="primary"
+                  onPress={cancelFromModal}
+                  accessibilityRole="button"
+                >
+                  {cancelLabel}
+                </GlassButton>
+              </View>
+            ) : null}
+            {!pendingApproval ? (
+              <GlassButton variant="primary" onPress={onClose} accessibilityRole="button">
+                {tx('shop.celebrationButton')}
+              </GlassButton>
+            ) : null}
           </Animated.View>
         </View>
       </View>
@@ -288,6 +371,10 @@ function createStyles(c, insets) {
       lineHeight: 23,
       marginBottom: 22,
       paddingHorizontal: 4,
+    },
+    pendingButtonsCol: {
+      width: '100%',
+      gap: 12,
     },
   });
 }

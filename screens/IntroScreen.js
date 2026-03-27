@@ -14,16 +14,21 @@ const SLIDE_IMAGES = [
   require('../assets/intro/slide2.png'),
 ];
 
-export default function IntroScreen({ navigation }) {
+export default function IntroScreen({ navigation, route }) {
   const { tx, ready: localeReady } = useLocale();
-  const { colors, ready: themeReady } = useTheme();
+  const { colors, isDark, ready: themeReady } = useTheme();
   const { onboardingComplete } = useTaskRewards();
-  const styles = useMemo(() => createIntroStyles(colors), [colors]);
+  const styles = useMemo(() => createIntroStyles(colors, isDark), [colors, isDark]);
   const [index, setIndex] = useState(0);
 
   const finish = async () => {
     await markIntroSeen();
-    const next = onboardingComplete ? 'SwitchProfile' : 'OnboardingLanguage';
+    const fromLanguageOnboarding = route?.params?.fromLanguageOnboarding === true;
+    const next = fromLanguageOnboarding
+      ? 'OnboardingKids'
+      : onboardingComplete
+        ? 'SwitchProfile'
+        : 'OnboardingLanguage';
     navigation.reset({ index: 0, routes: [{ name: next }] });
   };
 
@@ -52,6 +57,7 @@ export default function IntroScreen({ navigation }) {
         <ScrollView
           style={styles.slideScroll}
           contentContainerStyle={styles.slideScrollContent}
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -67,6 +73,7 @@ export default function IntroScreen({ navigation }) {
                   title: tx(`intro.slide${index}Title`),
                 })}
               />
+              {isDark ? <View pointerEvents="none" style={styles.screenshotDarkTint} /> : null}
             </View>
             <Text style={styles.body}>{tx(`intro.slide${index}Body`)}</Text>
           </View>

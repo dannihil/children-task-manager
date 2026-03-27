@@ -72,7 +72,7 @@ export default function RootNavigator() {
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme}>
       <Stack.Navigator
-        initialRouteName={hasSeenIntro ? 'SwitchProfile' : 'Intro'}
+        initialRouteName={hasSeenIntro ? 'SwitchProfile' : 'OnboardingLanguage'}
         screenOptions={{
           headerShadowVisible: false,
           headerStyle: { backgroundColor: colors.surface },

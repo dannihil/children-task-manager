@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-export function createOnboardingStyles(c) {
+export function createOnboardingStyles(c, isDark = false) {
   return StyleSheet.create({
     safe: {
       flex: 1,
@@ -8,35 +8,40 @@ export function createOnboardingStyles(c) {
     },
     scroll: {
       flexGrow: 1,
-      paddingHorizontal: 22,
-      paddingTop: 20,
-      paddingBottom: 36,
+      paddingHorizontal: 24,
+      paddingTop: 24,
+      paddingBottom: 40,
     },
     title: {
-      fontSize: 28,
+      fontSize: 30,
       fontWeight: '900',
-      color: c.text,
+      color: isDark ? c.primaryDark : c.text,
       textAlign: 'center',
-      marginBottom: 10,
-      lineHeight: 34,
+      marginBottom: 12,
+      lineHeight: 38,
     },
     sub: {
       fontSize: 16,
       fontWeight: '600',
       color: c.textSecondary,
       textAlign: 'center',
-      marginBottom: 28,
+      marginBottom: 30,
       lineHeight: 22,
-      paddingHorizontal: 4,
+      paddingHorizontal: 10,
     },
     card: {
       width: '100%',
-      backgroundColor: c.surface,
-      borderRadius: 20,
-      padding: 18,
-      borderWidth: 1,
-      borderColor: c.border,
-      marginBottom: 14,
+      backgroundColor: isDark ? c.surfaceMuted : c.surface,
+      borderRadius: 24,
+      padding: 20,
+      borderWidth: 2,
+      borderColor: isDark ? c.borderStrong : c.border,
+      marginBottom: 16,
+      shadowColor: c.cardShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.22 : 0.08,
+      shadowRadius: 12,
+      elevation: 3,
     },
     rowLabel: {
       fontSize: 13,
@@ -45,15 +50,15 @@ export function createOnboardingStyles(c) {
       marginBottom: 8,
     },
     input: {
-      backgroundColor: c.surfaceMuted,
-      borderRadius: 14,
+      backgroundColor: isDark ? c.surface : c.surfaceMuted,
+      borderRadius: 16,
       paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingVertical: 15,
       fontSize: 17,
       fontWeight: '600',
       color: c.text,
-      borderWidth: 1,
-      borderColor: c.border,
+      borderWidth: 1.5,
+      borderColor: isDark ? c.borderStrong : c.border,
     },
     childRow: {
       marginBottom: 16,
@@ -79,7 +84,7 @@ export function createOnboardingStyles(c) {
       color: c.primary,
     },
     footer: {
-      marginTop: 24,
+      marginTop: 28,
       gap: 12,
     },
     switchBlock: {

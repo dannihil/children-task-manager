@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-export function createIntroStyles(c) {
+export function createIntroStyles(c, isDark = false) {
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -8,7 +8,7 @@ export function createIntroStyles(c) {
     },
     safePad: {
       flex: 1,
-      paddingHorizontal: 20,
+      paddingHorizontal: 22,
     },
     skipWrap: {
       alignItems: 'flex-end',
@@ -34,36 +34,40 @@ export function createIntroStyles(c) {
     screenshotFrame: {
       alignSelf: 'stretch',
       height: 380,
-      borderRadius: 28,
+      borderRadius: 30,
       overflow: 'hidden',
       backgroundColor: c.surface,
-      borderWidth: 3,
-      borderColor: c.primary,
-      marginBottom: 18,
+      borderWidth: 2,
+      borderColor: isDark ? c.primary : c.borderStrong,
+      marginBottom: 20,
       shadowColor: c.cardShadow,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.14,
-      shadowRadius: 14,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 7 },
+      shadowOpacity: isDark ? 0.22 : 0.12,
+      shadowRadius: 16,
+      elevation: 6,
     },
     screenshotImage: {
       width: '100%',
       height: '100%',
     },
+    screenshotDarkTint: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(8, 12, 24, 0.24)',
+    },
     title: {
-      fontSize: 26,
+      fontSize: 28,
       fontWeight: '900',
       color: c.primaryDark,
       textAlign: 'center',
       letterSpacing: 0.2,
-      marginBottom: 16,
+      marginBottom: 18,
     },
     body: {
       fontSize: 17,
       color: c.text,
-      lineHeight: 26,
+      lineHeight: 27,
       textAlign: 'center',
-      paddingHorizontal: 6,
+      paddingHorizontal: 12,
       fontWeight: '600',
     },
     dots: {
@@ -74,14 +78,14 @@ export function createIntroStyles(c) {
       marginTop: 8,
     },
     dot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
+      width: 11,
+      height: 11,
+      borderRadius: 5.5,
       backgroundColor: c.borderStrong,
     },
     dotActive: {
       backgroundColor: c.primary,
-      width: 28,
+      width: 30,
     },
     footer: {
       paddingBottom: 8,

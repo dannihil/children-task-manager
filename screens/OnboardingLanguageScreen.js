@@ -9,29 +9,36 @@ import { LANGUAGE_OPTIONS } from '../lib/languageOptions';
 import { createOnboardingStyles } from './onboardingScreenStyles';
 
 export default function OnboardingLanguageScreen({ navigation }) {
-  const { tx, setLanguage } = useLocale();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createOnboardingStyles(colors), [colors]);
+  const { setLanguage } = useLocale();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createOnboardingStyles(colors, isDark), [colors, isDark]);
   const { applyOnboardingLanguageDefaults } = useTaskRewards();
 
   const choose = async (code) => {
     await setLanguage(code);
     applyOnboardingLanguageDefaults(code);
-    navigation.navigate('OnboardingKids');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Intro', params: { fromLanguageOnboarding: true } }],
+    });
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>{tx('onboarding.languageTitle')}</Text>
-        <Text style={styles.sub}>{tx('onboarding.languageSub')}</Text>
+        <Text style={styles.title}>Choose app language</Text>
+        <Text style={styles.sub}>
+          Tasks and rewards will start in this language. You can change it anytime in parent
+          settings.
+        </Text>
 
         <View style={styles.card}>
-          {LANGUAGE_OPTIONS.map(({ code, labelKey, flag }, i) => (
+          {LANGUAGE_OPTIONS.map(({ code, flag, nativeLabel, englishRegion }, i) => (
             <Pressable
               key={code}
               onPress={() => void choose(code)}
@@ -44,16 +51,14 @@ export default function OnboardingLanguageScreen({ navigation }) {
                 { opacity: pressed ? 0.75 : 1 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`${tx(labelKey)}, ${tx(`parent.langRegions.${code}`)}`}
+              accessibilityLabel={`${nativeLabel}, ${englishRegion}`}
             >
               <Text style={rowStyles.flag} importantForAccessibility="no">
                 {flag}
               </Text>
               <View style={rowStyles.labels}>
-                <Text style={[rowStyles.langName, { color: colors.text }]}>{tx(labelKey)}</Text>
-                <Text style={[rowStyles.region, { color: colors.textSecondary }]}>
-                  {tx(`parent.langRegions.${code}`)}
-                </Text>
+                <Text style={[rowStyles.langName, { color: colors.text }]}>{nativeLabel}</Text>
+                <Text style={[rowStyles.region, { color: colors.textSecondary }]}>{englishRegion}</Text>
               </View>
               <Ionicons
                 name="chevron-forward"

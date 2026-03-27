@@ -7,7 +7,7 @@ const STORAGE_KEY = '@ctm/darkMode';
 const Ctx = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDarkState] = useState(false);
+  const [isDark, setIsDarkState] = useState(true);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
